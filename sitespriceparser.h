@@ -10,6 +10,7 @@ class QLineEdit;
 class QTextEdit;
 class QLabel;
 class parserOperationData;
+class QDomNode;
 
 
 class sitesPriceParserGUI : public QDialog
@@ -60,6 +61,8 @@ private:
 
     QPushButton *m_pBtnAddProduct;
     QPushButton *m_pBtnCancel;
+
+    void productExists(const QDomNode&);
 };
 
 #endif // SITESPRICEPARSER_H

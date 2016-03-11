@@ -85,37 +85,84 @@ parserOperationData::parserOperationData(QWidget *parent) : QDialog(parent)
 
 void parserOperationData::addProduct()
 {
+    QString fileName = QApplication::applicationDirPath() + "/data.xml";
+
     if (m_pLeProductName->text().isEmpty())
     {
         QMessageBox::warning(this, "Empty product name", "Please chose product name!");
         return;
     }
+
     QFile outputFile;
-    if (!QFile(QApplication::applicationDirPath() + "/data.xml").exists())
+
+    //if file don't exists create them
+    if (!QFile(fileName).exists())
     {
-        outputFile.setFileName(QApplication::applicationDirPath() + "/data.xml");
+        outputFile.setFileName(fileName);
         if  (!outputFile.open(QIODevice::WriteOnly))
         {
             qDebug() << "Coul'd not open file.";
             return;
         }
+        outputFile.close();
     }
 
+    //open file to work
+    outputFile.setFileName(fileName);
+    if  (!outputFile.open(QIODevice::ReadWrite))
+    {
+        qDebug() << "Coul'd not open file!";
+        return;
+    }
+    else
+    {
+        qDebug() <<  outputFile.fileName();
+    }
+
+    //проверить есть ли в документе позиция с таким названием
     QDomDocument xmlDoc("MyML");
-    QDomElement root = xmlDoc.createElement("MyML");
-    xmlDoc.appendChild(root);
+    if (xmlDoc.setContent(&outputFile))
+    {
+        QDomElement domElement = xmlDoc.documentElement();
+        productExists(domElement);
+    }
+    else
+    {
+        qDebug() << "Coul'd not open XML doc";
+    }
 
-    QDomElement productName = xmlDoc.createElement(m_pLeProductName->text());
-    root.appendChild(productName);
 
-    QDomText productLinks = xmlDoc.createTextNode(m_pTeLinksList->toPlainText());
-    productName.appendChild(productLinks);
+    //        QDomElement root = xmlDoc.createElement("ProductsWithLinks");
+    //        xmlDoc.appendChild(root);
 
-    QString xml = xmlDoc.toString();
+    //        QDomElement productName = xmlDoc.createElement(m_pLeProductName->text());
+    //        root.appendChild(productName);
 
-    QTextStream textStream(&outputFile);
-    textStream << xml;
+    //        QDomText productLinks = xmlDoc.createTextNode(m_pTeLinksList->toPlainText());
+    //        productName.appendChild(productLinks);
+
+    //        QString xml = xmlDoc.toString();
+
+    //        QTextStream textStream(&outputFile);
+    //        textStream << xml;
+
     outputFile.close();
+}
+
+void parserOperationData::productExists(const QDomNode &node)
+{
+    QDomNode domNode = node.firstChild();
+    while(!domNode.isNull())
+    {
+        if (domNode.isElement())
+        {
+            QDomElement domElement = domNode.toElement();
+            if (!domElement.isNull())
+            {
+                qDebug() << domElement.text();
+            }
+        }
+    }
 }
 
 void parserOperationData::readData()
