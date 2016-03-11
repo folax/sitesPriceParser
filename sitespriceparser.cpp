@@ -78,6 +78,9 @@ parserOperationData::parserOperationData(QWidget *parent) : QDialog(parent)
     m_pMainLayout->addWidget(m_pTeLinksList);
     setLayout(m_pMainLayout);
 
+    //variables
+    fileName = QApplication::applicationDirPath() + "/data.xml";
+
     //connect
     connect(m_pBtnCancel, &QPushButton::clicked, this, &parserOperationData::close);
     connect(m_pBtnAddProduct, &QPushButton::clicked, this, &parserOperationData::addProduct);
@@ -85,8 +88,6 @@ parserOperationData::parserOperationData(QWidget *parent) : QDialog(parent)
 
 void parserOperationData::addProduct()
 {
-    QString fileName = QApplication::applicationDirPath() + "/data.xml";
-
     if (m_pLeProductName->text().isEmpty())
     {
         QMessageBox::warning(this, "Empty product name", "Please chose product name!");
@@ -114,54 +115,78 @@ void parserOperationData::addProduct()
         qDebug() << "Coul'd not open file!";
         return;
     }
-    else
-    {
-        qDebug() <<  outputFile.fileName();
-    }
-
     //проверить есть ли в документе позиция с таким названием
-    QDomDocument xmlDoc("MyML");
-    if (xmlDoc.setContent(&outputFile))
+    if (!productExists(m_pLeProductName->text()))
     {
-        QDomElement domElement = xmlDoc.documentElement();
-        productExists(domElement);
+        QDomDocument document;
+        if( !document.setContent(&outputFile))
+        {
+            qDebug( "Failed to parse the file into a DOM tree." );
+            outputFile.close();
+        }
+
+        QDomElement documentElement = document.documentElement();
+        QDomNodeList elements = documentElement.elementsByTagName("product_list");
+        if (elements.size() == 0)
+        {
+            QDomElement product_list = document.createElement("product_list");
+            documentElement.insertBefore(product_list, QDomNode());
+        }
+        else if(elements.size() == 1)
+        {
+            QDomElement product_list = elements.at(0).toElement();
+
+            QDomElement product = document.createElement("product");
+            product.setAttribute( "link", m_pLeProductName->text());
+
+            product_list.appendChild(product);
+        }
+
+        QString xml = document.toString();
+
+        QTextStream textStream(&outputFile);
+        textStream << xml;
+
+        outputFile.close();
     }
-    else
-    {
-        qDebug() << "Coul'd not open XML doc";
-    }
-
-
-    //        QDomElement root = xmlDoc.createElement("ProductsWithLinks");
-    //        xmlDoc.appendChild(root);
-
-    //        QDomElement productName = xmlDoc.createElement(m_pLeProductName->text());
-    //        root.appendChild(productName);
-
-    //        QDomText productLinks = xmlDoc.createTextNode(m_pTeLinksList->toPlainText());
-    //        productName.appendChild(productLinks);
-
-    //        QString xml = xmlDoc.toString();
-
-    //        QTextStream textStream(&outputFile);
-    //        textStream << xml;
-
-    outputFile.close();
 }
 
-void parserOperationData::productExists(const QDomNode &node)
+bool parserOperationData::productExists(const QString &_productName)
 {
-    QDomNode domNode = node.firstChild();
-    while(!domNode.isNull())
+    qDebug() << "productExists";
+    QDomDocument doc;
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly) || !doc.setContent(&file))
     {
-        if (domNode.isElement())
+        qDebug() << "File not open or not have xml structure.";
+        createXMLStructureInDocument();
+    }
+    QDomNodeList products = doc.elementsByTagName("book");
+    for (int i = 0; i < products.size(); ++i)
+    {
+        QDomNode n = products.item(i);
+        QDomElement productName = n.firstChildElement("price");
+        if (productName.isNull())
+            continue;
+        if (productName.text() == _productName)
         {
-            QDomElement domElement = domNode.toElement();
-            if (!domElement.isNull())
-            {
-                qDebug() << domElement.text();
-            }
+            QMessageBox::information(this, "Product exists", "Product name exists, please choose another name.");
+            return true;
         }
+        return false;
+    }
+    return false;
+}
+
+void parserOperationData::createXMLStructureInDocument()
+{
+    QDomDocument doc("Products");
+    QDomElement domElement = doc.createElement("products_to_parse_list");
+    doc.appendChild(domElement);
+    QFile file(fileName);
+    if(file.open(QIODevice::WriteOnly)) {
+        QTextStream(&file) << doc.toString();
+        file.close();
     }
 }
 

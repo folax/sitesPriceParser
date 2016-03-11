@@ -12,7 +12,6 @@ class QLabel;
 class parserOperationData;
 class QDomNode;
 
-
 class sitesPriceParserGUI : public QDialog
 {
     Q_OBJECT
@@ -62,7 +61,10 @@ private:
     QPushButton *m_pBtnAddProduct;
     QPushButton *m_pBtnCancel;
 
-    void productExists(const QDomNode&);
+    QString fileName;
+
+    bool productExists(const QString&);
+    void createXMLStructureInDocument();
 };
 
 #endif // SITESPRICEPARSER_H
