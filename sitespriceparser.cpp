@@ -93,7 +93,6 @@ void parserOperationData::addProduct()
         QMessageBox::warning(this, "Empty product name", "Please chose product name!");
         return;
     }
-
     QFile outputFile;
 
     //if file don't exists create them
@@ -116,39 +115,24 @@ void parserOperationData::addProduct()
         return;
     }
     //проверить есть ли в документе позиция с таким названием
-    if (!productExists(m_pLeProductName->text()))
+    QDomDocument doc;
+    if(!doc.setContent(&outputFile))
     {
-        QDomDocument document;
-        if( !document.setContent(&outputFile))
-        {
-            qDebug( "Failed to parse the file into a DOM tree." );
-            outputFile.close();
-        }
-
-        QDomElement documentElement = document.documentElement();
-        QDomNodeList elements = documentElement.elementsByTagName("product_list");
-        if (elements.size() == 0)
-        {
-            QDomElement product_list = document.createElement("product_list");
-            documentElement.insertBefore(product_list, QDomNode());
-        }
-        else if(elements.size() == 1)
-        {
-            QDomElement product_list = elements.at(0).toElement();
-
-            QDomElement product = document.createElement("product");
-            product.setAttribute( "link", m_pLeProductName->text());
-
-            product_list.appendChild(product);
-        }
-
-        QString xml = document.toString();
-
-        QTextStream textStream(&outputFile);
-        textStream << xml;
-
-        outputFile.close();
+        qDebug( "Failed to parse the file into a DOM tree." );
+        createXMLStructureInDocument();
     }
+
+    QDomElement root = doc.documentElement();
+
+    QDomElement new_product = doc.createElement("product");
+    new_product.setAttribute("name", m_pLeProductName->text());
+    new_product.setAttribute("link", m_pTeLinksList->toPlainText());
+
+    root.appendChild(new_product);
+
+    QTextStream stream(&outputFile);
+    stream << doc.toString();
+    outputFile.close();
 }
 
 bool parserOperationData::productExists(const QString &_productName)
@@ -161,11 +145,11 @@ bool parserOperationData::productExists(const QString &_productName)
         qDebug() << "File not open or not have xml structure.";
         createXMLStructureInDocument();
     }
-    QDomNodeList products = doc.elementsByTagName("book");
+    QDomNodeList products = doc.elementsByTagName("product");
     for (int i = 0; i < products.size(); ++i)
     {
         QDomNode n = products.item(i);
-        QDomElement productName = n.firstChildElement("price");
+        QDomElement productName = n.firstChildElement("name");
         if (productName.isNull())
             continue;
         if (productName.text() == _productName)
@@ -180,14 +164,22 @@ bool parserOperationData::productExists(const QString &_productName)
 
 void parserOperationData::createXMLStructureInDocument()
 {
-    QDomDocument doc("Products");
+    QDomDocument doc("products");
     QDomElement domElement = doc.createElement("products_to_parse_list");
     doc.appendChild(domElement);
+
+    QDomElement product = doc.createElement("product");
+    product.setAttribute("name", "empty");
+    product.setAttribute("link", "empty");
+
+    domElement.appendChild(product);
+
     QFile file(fileName);
     if(file.open(QIODevice::WriteOnly)) {
         QTextStream(&file) << doc.toString();
         file.close();
     }
+    qDebug() << "createXMLStructureInDocument()";
 }
 
 void parserOperationData::readData()
