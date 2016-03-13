@@ -121,8 +121,12 @@ void parserOperationData::addProduct()
         qDebug( "Failed to parse the file into a DOM tree." );
         createXMLStructureInDocument();
     }
+    doc.setContent(&outputFile);
 
     QDomElement root = doc.documentElement();
+
+    if (root.isNull())
+        qDebug() << "Empty element!";
 
     QDomElement new_product = doc.createElement("product");
     new_product.setAttribute("name", m_pLeProductName->text());
