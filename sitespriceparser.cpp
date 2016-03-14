@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QApplication>
 #include <QDomDocument>
+#include <algorithm>
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
 {
@@ -132,10 +133,13 @@ void parserOperationData::addProduct()
 
         //parse links from QTextEdit
         QStringList links = QString(m_pTeLinksList->toPlainText()).split('\n');
+        links.erase(std::unique(links.begin(), links.end()), links.end());
+
         for (int i(0); i < links.size(); ++i)
         {
             QString tmp = links.at(i);
-            if (!tmp.contains("\n") || tmp.size() < 2)
+            tmp.remove(" ");
+            if (tmp.size() > 2)
             {
                 QDomElement new_link = doc.createElement("link");
                 new_link.setAttribute("link", links.at(i));
@@ -145,7 +149,6 @@ void parserOperationData::addProduct()
 
         outputFile.close();
         outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-
         QTextStream(&outputFile) << doc.toString();
     }
 
@@ -190,15 +193,15 @@ void parserOperationData::createXMLStructureInDocument()
     QDomElement domElement = doc.createElement("products_to_parse_list");
     doc.appendChild(domElement);
 
-    QDomElement product = doc.createElement("product");
-    product.setAttribute("name", "empty");
+    //QDomElement product = doc.createElement("product");
+    //product.setAttribute("name", "empty");
     //product.setAttribute("link", "empty");
 
-    QDomElement link = doc.createElement("link");
-    link.setAttribute("link", "empty");
-    product.appendChild(link);
+    //QDomElement link = doc.createElement("link");
+    //link.setAttribute("link", "empty");
+    //product.appendChild(link);
 
-    domElement.appendChild(product);
+    //domElement.appendChild(product);
 
     QFile file(fileName);
     if(file.open(QIODevice::WriteOnly))
