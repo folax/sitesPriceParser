@@ -11,6 +11,7 @@ class QTextEdit;
 class QLabel;
 class parserOperationData;
 class QDomNode;
+class QFile;
 
 class sitesPriceParserGUI : public QDialog
 {
