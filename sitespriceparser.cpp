@@ -11,34 +11,41 @@
 #include <QApplication>
 #include <QDomDocument>
 #include <algorithm>
+#include <QSplitter>
+#include <QComboBox>
+#include <QStyleFactory>
+#include <QVector>
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
 {
     this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
+    QApplication::setStyle(new newStyle);
 
     //buttons
-    m_pBtnAddProductToList = new QPushButton(tr("Add Product"));
-    m_pBtnEditProductInList = new QPushButton(tr("Edit product"));
-    m_pBtnRemoveProductFromList = new QPushButton(tr("Remove product"));
+    m_pBtnAddProduct = new QPushButton(tr("Add Product"));
+    m_pBtnEditProduct = new QPushButton(tr("Edit products"));
+    m_pBtnRemoveProduct = new QPushButton(tr("Remove product"));
+    m_pBtnClose = new QPushButton(tr("Quit"));
 
     //lineedits
     m_pTeProductList = new QTextEdit();
 
     //layouts
     m_pProductLayout = new QVBoxLayout();
-    m_pProductLayout->addWidget(m_pBtnAddProductToList);
-    m_pProductLayout->addWidget(m_pBtnEditProductInList);
-    m_pProductLayout->addWidget(m_pBtnRemoveProductFromList);
+    m_pProductLayout->addWidget(m_pBtnAddProduct);
+    m_pProductLayout->addWidget(m_pBtnEditProduct);
+    m_pProductLayout->addWidget(m_pBtnRemoveProduct);
+    m_pProductLayout->addWidget(m_pBtnClose);
     m_pProductLayout->addWidget(m_pTeProductList);
 
     m_pMainLayout = new QHBoxLayout(this);
     m_pMainLayout->addLayout(m_pProductLayout);
     setLayout(m_pMainLayout);
 
-    m_pParserOpData = new parserOperationData(this);
-
     //connect
-    connect(m_pBtnAddProductToList, &QPushButton::clicked, this, &sitesPriceParserGUI::addProduct);
+    connect(m_pBtnClose, &QPushButton::clicked, this, &sitesPriceParserGUI::close);
+    connect(m_pBtnAddProduct, &QPushButton::clicked, this, &sitesPriceParserGUI::addProduct);
+    connect(m_pBtnEditProduct, &QPushButton::clicked, this, &sitesPriceParserGUI::editProducts);
 }
 
 sitesPriceParserGUI::~sitesPriceParserGUI()
@@ -48,12 +55,20 @@ sitesPriceParserGUI::~sitesPriceParserGUI()
 
 void sitesPriceParserGUI::addProduct()
 {
+    m_pParserOpData = new sitePriceProductAddGUI(this);
     m_pParserOpData->setModal(true);
     m_pParserOpData->show();
 }
 
+void sitesPriceParserGUI::editProducts()
+{
+    m_pProductEditGUI = new sitePriceProductEditGUI(this);
+    m_pProductEditGUI->setModal(true);
+    m_pProductEditGUI->show();
+}
+
 //class parserOperationData
-parserOperationData::parserOperationData(QWidget *parent) : QDialog(parent)
+sitePriceProductAddGUI::sitePriceProductAddGUI(QWidget *parent) : QDialog(parent)
 {
     this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
     //labels
@@ -83,11 +98,11 @@ parserOperationData::parserOperationData(QWidget *parent) : QDialog(parent)
     fileName = QApplication::applicationDirPath() + "/data.xml";
 
     //connect
-    connect(m_pBtnCancel, &QPushButton::clicked, this, &parserOperationData::close);
-    connect(m_pBtnAddProduct, &QPushButton::clicked, this, &parserOperationData::addProduct);
+    connect(m_pBtnCancel, &QPushButton::clicked, this, &sitePriceProductAddGUI::close);
+    connect(m_pBtnAddProduct, &QPushButton::clicked, this, &sitePriceProductAddGUI::addProduct);
 }
 
-void parserOperationData::addProduct()
+void sitePriceProductAddGUI::addProduct()
 {
     if (m_pLeProductName->text().isEmpty())
     {
@@ -155,7 +170,7 @@ void parserOperationData::addProduct()
     outputFile.close();
 }
 
-bool parserOperationData::productExists(const QString &_productName)
+bool sitePriceProductAddGUI::productExists(const QString &_productName)
 {
     qDebug() << "*** productExists() ***";
     QDomDocument doc;
@@ -168,7 +183,8 @@ bool parserOperationData::productExists(const QString &_productName)
     QDomElement docElem = doc.documentElement();
     QDomNode n = docElem.firstChild();
 
-    while(!n.isNull()) {
+    while(!n.isNull())
+    {
         QDomElement e = n.toElement(); // try to convert the node to an element.
         if(!e.isNull())
         {
@@ -186,7 +202,7 @@ bool parserOperationData::productExists(const QString &_productName)
     return false;
 }
 
-void parserOperationData::createXMLStructureInDocument()
+void sitePriceProductAddGUI::createXMLStructureInDocument()
 {
     qDebug() << "*** createXMLStructureInDocument() ***";
     QDomDocument doc("products");
@@ -211,14 +227,140 @@ void parserOperationData::createXMLStructureInDocument()
     }
 }
 
-void parserOperationData::readData()
+void sitePriceProductAddGUI::readData()
 {
 
 }
 
-parserOperationData::~parserOperationData()
+sitePriceProductAddGUI::~sitePriceProductAddGUI()
 {
 
 }
 
 
+
+//product edit class
+sitePriceProductEditGUI::sitePriceProductEditGUI(QWidget *parent) : QDialog(parent)
+{
+    this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
+    setWindowTitle("Products Editor");
+    //variables
+    fileName = QApplication::applicationDirPath() + "/data.xml";
+
+    //buttons
+    m_pBtnUpdateProduct = new QPushButton(tr("Update product"));
+    m_pBtnClose = new QPushButton(tr("Quit"));
+
+    //lineedit
+    m_pLeProductSelector = new QLineEdit;
+
+    //labels
+    m_pLblProductsCaption = new QLabel(tr("All products list"));
+    m_pLblProductsCaption->setAlignment(Qt::AlignCenter);
+    m_pLblStatusProducts = new QLabel(tr("Total: "));
+    m_pLblEditCaption = new QLabel(tr("Select product:"));
+    //m_pLblEditCaption->setAlignment(Qt::AlignCenter);
+    m_pLblEditName = new QLabel(tr("Edit name:"));
+    m_pLblEditName->setBuddy(m_pLeProductSelector);
+    m_pLblEditLinks = new QLabel(tr("Edit links:"));
+
+    //textedit
+    m_pTeProductsList = new QTextEdit();
+    m_pTeProductsList->setReadOnly(true);
+    m_pTeProductLinks = new QTextEdit();
+
+    //combobox
+    m_pCbProduct = new QComboBox();
+
+    //layouts
+    m_pProductsListLayout = new QVBoxLayout();
+    m_pProductsListLayout->addWidget(m_pLblProductsCaption);
+    m_pProductsListLayout->addWidget(m_pTeProductsList);
+    m_pProductsListLayout->addWidget(m_pLblStatusProducts);
+
+    m_pProductEditLayout = new QVBoxLayout();
+    m_pProductEditLayout->addWidget(m_pLblEditCaption);
+    m_pProductEditLayout->addWidget(m_pCbProduct);
+    m_pProductEditLayout->addWidget(m_pLblEditName);
+    m_pProductEditLayout->addWidget(m_pLeProductSelector);
+    m_pProductEditLayout->addWidget(m_pLblEditLinks);
+    m_pProductEditLayout->addWidget(m_pTeProductLinks);
+    m_pProductEditLayout->addWidget(m_pBtnUpdateProduct);
+    m_pProductEditLayout->addWidget(m_pBtnClose);
+
+    m_pMainLayout = new QHBoxLayout(this);
+    m_pMainLayout->addLayout(m_pProductsListLayout);
+    m_pMainLayout->addLayout(m_pProductEditLayout);
+
+    setLayout(m_pMainLayout);
+    readProductsFromXML();
+    //connect
+    connect(m_pBtnClose, &QPushButton::clicked, this, &sitePriceProductEditGUI::close);
+    connect(m_pCbProduct, &QComboBox::currentTextChanged, this, &sitePriceProductEditGUI::loadProductData);
+}
+
+void sitePriceProductEditGUI::readProductsFromXML()
+{
+    QFile outputFile;
+    QDomDocument doc;
+    outputFile.setFileName(fileName);
+    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
+    {
+        qDebug() << "Function can't open file, or file don't have XML structure.";
+        m_pTeProductsList->append("Can't open file, or file don't have XML structure. Create product first!");
+        return;
+    }
+    QDomElement docElem = doc.documentElement();
+    QDomNode n = docElem.firstChild();
+    while(!n.isNull())
+    {
+        QDomElement e = n.toElement(); // try to convert the node to an element.
+        if(!e.isNull())
+        {
+            if (e.tagName() == "product")
+            {
+                m_productName.push_back(e.attribute("name"));
+                m_pTeProductsList->append(e.attribute("name"));
+            }
+            if (e.hasAttribute("link"))
+                qDebug() << e.attribute("link");
+        }
+        n = n.nextSibling();
+    }
+    m_pLblStatusProducts->setText(m_pLblStatusProducts->text()
+                                  + QString::number(m_productName.size()) + " products");
+    m_pCbProduct->addItems(m_productName);
+}
+
+sitePriceProductEditGUI::~sitePriceProductEditGUI()
+{
+
+}
+
+void sitePriceProductEditGUI::loadProductData(QString _product)
+{
+    m_pLeProductSelector->setText(_product);
+}
+
+
+newStyle::newStyle() : QProxyStyle(QStyleFactory::create("Fusion"))
+{
+
+}
+
+void newStyle::polish(QPalette &darkPalette)
+{
+    darkPalette.setColor(QPalette::Window, QColor(53,53,53));
+    darkPalette.setColor(QPalette::WindowText, Qt::white);
+    darkPalette.setColor(QPalette::Base, QColor(25,25,25)); //listWidget color
+    darkPalette.setColor(QPalette::AlternateBase, QColor(53,53,53));
+    darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+    darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+    darkPalette.setColor(QPalette::Text, QColor(216, 224, 240));
+    darkPalette.setColor(QPalette::Button, QColor(4, 90, 135));
+    darkPalette.setColor(QPalette::ButtonText, Qt::white);
+    darkPalette.setColor(QPalette::BrightText, Qt::red);
+    darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+    darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+    darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+}
