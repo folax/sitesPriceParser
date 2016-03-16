@@ -156,7 +156,7 @@ void sitePriceProductAddGUI::addProduct()
             tmp.remove(" ");
             if (tmp.size() > 2)
             {
-                QDomElement new_link = doc.createElement("link");
+                QDomElement new_link = doc.createElement("links");
                 new_link.setAttribute("link", links.at(i));
                 new_product.appendChild(new_link);
             }
@@ -321,15 +321,26 @@ void sitePriceProductEditGUI::readProductsFromXML()
             {
                 m_productName.push_back(e.attribute("name"));
                 m_pTeProductsList->append(e.attribute("name"));
+
+                //get product links
+                QDomNode node = n.firstChild();
+                while(!node.isNull())
+                {
+                    QDomElement element = node.toElement();
+                    if(!element.isNull())
+                    {
+                        qDebug() << element.attribute("link");
+                    }
+                    node = node.nextSibling();
+                }
             }
-            if (e.hasAttribute("link"))
-                qDebug() << e.attribute("link");
         }
         n = n.nextSibling();
     }
     m_pLblStatusProducts->setText(m_pLblStatusProducts->text()
                                   + QString::number(m_productName.size()) + " products");
     m_pCbProduct->addItems(m_productName);
+
 }
 
 sitePriceProductEditGUI::~sitePriceProductEditGUI()
@@ -340,6 +351,7 @@ sitePriceProductEditGUI::~sitePriceProductEditGUI()
 void sitePriceProductEditGUI::loadProductData(QString _product)
 {
     m_pLeProductSelector->setText(_product);
+
 }
 
 
