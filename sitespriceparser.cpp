@@ -312,6 +312,9 @@ void sitePriceProductEditGUI::readProductsFromXML()
     }
     QDomElement docElem = doc.documentElement();
     QDomNode n = docElem.firstChild();
+
+    QString productName;
+    QStringList productLinks;
     while(!n.isNull())
     {
         QDomElement e = n.toElement(); // try to convert the node to an element.
@@ -321,6 +324,7 @@ void sitePriceProductEditGUI::readProductsFromXML()
             {
                 m_productName.push_back(e.attribute("name"));
                 m_pTeProductsList->append(e.attribute("name"));
+                productName = e.attribute("name");
 
                 //get product links
                 QDomNode node = n.firstChild();
@@ -329,18 +333,19 @@ void sitePriceProductEditGUI::readProductsFromXML()
                     QDomElement element = node.toElement();
                     if(!element.isNull())
                     {
-                        qDebug() << element.attribute("link");
+                        productLinks.push_back(element.attribute("link"));
                     }
                     node = node.nextSibling();
                 }
             }
         }
         n = n.nextSibling();
+        m_productLinks.push_back( qMakePair(productName, productLinks) );
+        productLinks.clear();
     }
     m_pLblStatusProducts->setText(m_pLblStatusProducts->text()
                                   + QString::number(m_productName.size()) + " products");
     m_pCbProduct->addItems(m_productName);
-
 }
 
 sitePriceProductEditGUI::~sitePriceProductEditGUI()
@@ -352,6 +357,13 @@ void sitePriceProductEditGUI::loadProductData(QString _product)
 {
     m_pLeProductSelector->setText(_product);
 
+    //load links from pair array
+    for( QPair<QString, QStringList> pair : m_productLinks ){
+        for( QString str : pair.second )
+        {
+            qDebug() << str;
+        }
+    }
 }
 
 

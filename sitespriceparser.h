@@ -110,7 +110,7 @@ private:
     QString fileName;
 
      QStringList m_productName;
-     QMap<QString, QStringList> m_productLinks;
+     QVector< QPair<QString, QStringList> > m_productLinks;
 
     void readProductsFromXML();
 };
