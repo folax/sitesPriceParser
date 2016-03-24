@@ -15,6 +15,7 @@
 #include <QComboBox>
 #include <QStyleFactory>
 #include <QVector>
+#include <QScopedPointer>
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
 {
@@ -62,9 +63,14 @@ void sitesPriceParserGUI::addProduct()
 
 void sitesPriceParserGUI::editProducts()
 {
+
+    //need singlton
+    //QScopedPointer<sitePriceProductEditGUI> wnd( new sitePriceProductEditGUI );
     m_pProductEditGUI = new sitePriceProductEditGUI(this);
     m_pProductEditGUI->setModal(true);
     m_pProductEditGUI->show();
+    //    m_pProductEditGUI->setModal(true);
+    //    m_pProductEditGUI->show();
 }
 
 //class parserOperationData
@@ -252,7 +258,7 @@ sitePriceProductEditGUI::sitePriceProductEditGUI(QWidget *parent) : QDialog(pare
     m_pBtnClose = new QPushButton(tr("Quit"));
 
     //lineedit
-    m_pLeProductSelector = new QLineEdit;
+    m_pLeProductNewName = new QLineEdit;
 
     //labels
     m_pLblProductsCaption = new QLabel(tr("All products list"));
@@ -261,12 +267,13 @@ sitePriceProductEditGUI::sitePriceProductEditGUI(QWidget *parent) : QDialog(pare
     m_pLblEditCaption = new QLabel(tr("Select product:"));
     //m_pLblEditCaption->setAlignment(Qt::AlignCenter);
     m_pLblEditName = new QLabel(tr("Edit name:"));
-    m_pLblEditName->setBuddy(m_pLeProductSelector);
+    m_pLblEditName->setBuddy(m_pLeProductNewName);
     m_pLblEditLinks = new QLabel(tr("Edit links:"));
 
     //textedit
     m_pTeProductsList = new QTextEdit();
     m_pTeProductsList->setReadOnly(true);
+    m_pTeProductsList->setFixedWidth(200);
     m_pTeProductLinks = new QTextEdit();
 
     //combobox
@@ -282,7 +289,7 @@ sitePriceProductEditGUI::sitePriceProductEditGUI(QWidget *parent) : QDialog(pare
     m_pProductEditLayout->addWidget(m_pLblEditCaption);
     m_pProductEditLayout->addWidget(m_pCbProduct);
     m_pProductEditLayout->addWidget(m_pLblEditName);
-    m_pProductEditLayout->addWidget(m_pLeProductSelector);
+    m_pProductEditLayout->addWidget(m_pLeProductNewName);
     m_pProductEditLayout->addWidget(m_pLblEditLinks);
     m_pProductEditLayout->addWidget(m_pTeProductLinks);
     m_pProductEditLayout->addWidget(m_pBtnUpdateProduct);
@@ -297,10 +304,20 @@ sitePriceProductEditGUI::sitePriceProductEditGUI(QWidget *parent) : QDialog(pare
     //connect
     connect(m_pBtnClose, &QPushButton::clicked, this, &sitePriceProductEditGUI::close);
     connect(m_pCbProduct, &QComboBox::currentTextChanged, this, &sitePriceProductEditGUI::loadProductData);
+    connect(m_pBtnUpdateProduct, &QPushButton::clicked, this, &sitePriceProductEditGUI::updateProductData);
 }
 
 void sitePriceProductEditGUI::readProductsFromXML()
 {
+    //clear GUI elements
+    m_pTeProductsList->clear();
+    m_pTeProductLinks->clear();
+    m_productLinks.clear();
+    m_pCbProduct->clear();
+    m_productName.clear();
+    m_pLblStatusProducts->clear();
+
+    //read data from file
     QFile outputFile;
     QDomDocument doc;
     outputFile.setFileName(fileName);
@@ -355,15 +372,94 @@ sitePriceProductEditGUI::~sitePriceProductEditGUI()
 
 void sitePriceProductEditGUI::loadProductData(QString _product)
 {
-    m_pLeProductSelector->setText(_product);
+    m_pTeProductLinks->clear();
+    m_pLeProductNewName->setText(_product);
 
     //load links from pair array
     for( QPair<QString, QStringList> pair : m_productLinks ){
         for( QString str : pair.second )
         {
-            qDebug() << str;
+            if (pair.first == _product)
+                m_pTeProductLinks->append(str);
         }
     }
+}
+
+void sitePriceProductEditGUI::updateProductData()
+{
+    QMessageBox::StandardButton reply;
+    if (QString(m_pLeProductNewName->text()).size() > 1)
+    {
+        reply = QMessageBox::question(this, "Confirm edit product", "Confirm edit?",
+                                      QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes)
+        {
+            QStringList newLinks = QString(m_pTeProductLinks->toPlainText()).split('\n');
+            newLinks.erase(std::unique(newLinks.begin(), newLinks.end()), newLinks.end());
+            QString newName = m_pLeProductNewName->text();
+            updateXMLDocument();
+        }
+    }
+    else
+        QMessageBox::warning(this, "Product not activated", "Please choose product!");
+}
+
+void sitePriceProductEditGUI::updateXMLDocument()
+{
+    //delete element
+
+    QFile outputFile;
+    QDomDocument doc;
+    outputFile.setFileName(fileName);
+    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
+    {
+        qDebug() << "Function can't open file, or file don't have XML structure.";
+        m_pTeProductsList->append("Can't open file, or file don't have XML structure. Create product first!");
+        return;
+    }
+
+    //delete old element
+    QDomElement docElem = doc.documentElement();
+    QDomNode n = docElem.firstChild(); //product
+    while(!n.isNull())
+    {
+        QDomElement e = n.toElement(); // try to convert the node to an element.
+        if(!e.isNull())
+        {
+            if (e.tagName() == "product" && e.attribute("name") == m_pLeProductNewName->text())
+            {
+                docElem.removeChild(n);
+            }
+        }
+        n = n.nextSibling();
+    }
+
+    //add element with changes
+    QDomElement new_product = doc.createElement("product");
+    new_product.setAttribute("name", m_pLeProductNewName->text());
+    docElem.appendChild(new_product);
+
+    //parse links from QTextEdit
+    QStringList links = QString(m_pTeProductLinks->toPlainText()).split('\n');
+    links.erase(std::unique(links.begin(), links.end()), links.end());
+
+    for (int i(0); i < links.size(); ++i)
+    {
+        QString tmp = links.at(i);
+        tmp.remove(" ");
+        if (tmp.size() > 2)
+        {
+            QDomElement new_link = doc.createElement("links");
+            new_link.setAttribute("link", links.at(i));
+            new_product.appendChild(new_link);
+        }
+    }
+
+    outputFile.close();
+    outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QTextStream(&outputFile) << doc.toString();
+    outputFile.close();
+    readProductsFromXML();
 }
 
 

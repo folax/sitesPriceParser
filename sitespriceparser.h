@@ -86,6 +86,7 @@ public:
 
 public slots:
     void loadProductData(QString);
+    void updateProductData();
 
 private:
     QLabel *m_pLblProductsCaption;
@@ -94,7 +95,7 @@ private:
     QLabel *m_pLblEditName;
     QLabel *m_pLblEditLinks;
 
-    QLineEdit *m_pLeProductSelector;
+    QLineEdit *m_pLeProductNewName;
 
     QTextEdit *m_pTeProductsList;
     QTextEdit *m_pTeProductLinks;
@@ -109,10 +110,11 @@ private:
     QComboBox *m_pCbProduct;
     QString fileName;
 
-     QStringList m_productName;
-     QVector< QPair<QString, QStringList> > m_productLinks;
+    QStringList m_productName;
+    QVector< QPair<QString, QStringList> > m_productLinks;
 
     void readProductsFromXML();
+    void updateXMLDocument();
 };
 
 class newStyle : public QProxyStyle
