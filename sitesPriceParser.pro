@@ -9,8 +9,15 @@ QMAKE_CFLAGS = -Wall -Wextra -Werror
 }
 
 HEADERS += \
-    sitespriceparser.h
+    sitespriceparser.h \
+    singleton.h
 
 SOURCES += \
     sitespriceparser.cpp \
     main.cpp
+
+RESOURCES += \
+    res.qrc
+
+RC_ICONS = /images/app.ico
+RC_FILE = app.rc

@@ -15,7 +15,8 @@
 #include <QComboBox>
 #include <QStyleFactory>
 #include <QVector>
-#include <QScopedPointer>
+#include <QListWidget>
+#include "singleton.h"
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
 {
@@ -47,6 +48,7 @@ sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
     connect(m_pBtnClose, &QPushButton::clicked, this, &sitesPriceParserGUI::close);
     connect(m_pBtnAddProduct, &QPushButton::clicked, this, &sitesPriceParserGUI::addProduct);
     connect(m_pBtnEditProduct, &QPushButton::clicked, this, &sitesPriceParserGUI::editProducts);
+    connect(m_pBtnRemoveProduct, &QPushButton::clicked, this, &sitesPriceParserGUI::removeProducts);
 }
 
 sitesPriceParserGUI::~sitesPriceParserGUI()
@@ -56,21 +58,23 @@ sitesPriceParserGUI::~sitesPriceParserGUI()
 
 void sitesPriceParserGUI::addProduct()
 {
-    m_pParserOpData = new sitePriceProductAddGUI(this);
-    m_pParserOpData->setModal(true);
-    m_pParserOpData->show();
+    Singleton< sitePriceProductAddGUI > wnd;
+    wnd.Instance()->setModal(true);
+    wnd.Instance()->show();
 }
 
 void sitesPriceParserGUI::editProducts()
 {
+    Singleton< sitePriceProductEditGUI > wnd;
+    wnd.Instance()->setModal(true);
+    wnd.Instance()->show();
+}
 
-    //need singlton
-    //QScopedPointer<sitePriceProductEditGUI> wnd( new sitePriceProductEditGUI );
-    m_pProductEditGUI = new sitePriceProductEditGUI(this);
-    m_pProductEditGUI->setModal(true);
-    m_pProductEditGUI->show();
-    //    m_pProductEditGUI->setModal(true);
-    //    m_pProductEditGUI->show();
+void sitesPriceParserGUI::removeProducts()
+{
+    Singleton< sitePriceProductRemoveGUI > wnd;
+    wnd.Instance()->setModal(true);
+    wnd.Instance()->show();
 }
 
 //class parserOperationData
@@ -483,4 +487,89 @@ void newStyle::polish(QPalette &darkPalette)
     darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
     darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
     darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+}
+
+
+sitePriceProductRemoveGUI::sitePriceProductRemoveGUI(QWidget *parent) : QDialog(parent)
+{
+    this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
+    setWindowTitle("Products remover");
+
+    //buttons
+    m_pRemoveProductBtn = new QPushButton(tr("Remove element"));
+    m_pCloseBtn = new QPushButton(tr("Exit"));
+
+    //listwidget
+    m_plWProductList = new QListWidget();
+    m_plWProductList->setSelectionMode(QAbstractItemView::ExtendedSelection);
+
+    //layouts
+    m_pMainLayout = new QVBoxLayout(this);
+    m_pMainLayout->addWidget(m_plWProductList);
+    m_pMainLayout->addWidget(m_pRemoveProductBtn);
+    m_pMainLayout->addWidget(m_pCloseBtn);
+
+    this->setLayout(m_pMainLayout);
+
+    fileName = QApplication::applicationDirPath() + "/data.xml";
+    loadDataFromXML();
+
+    //connect
+    connect(m_pCloseBtn, &QPushButton::clicked, this, &sitePriceProductRemoveGUI::close);
+    connect(m_pRemoveProductBtn, &QPushButton::clicked, this, &sitePriceProductRemoveGUI::removeProducts);
+    //connect(m_plWProductList, &QListWidget::itemSelectionChanged, this, &sitePriceProductRemoveGUI::getProductNames);
+}
+
+sitePriceProductRemoveGUI::~sitePriceProductRemoveGUI()
+{
+
+}
+
+void sitePriceProductRemoveGUI::removeProducts()
+{
+    qDebug() << "sitePriceProductRemoveGUI::removeProducts()";
+    m_productNamesToDelete.clear();
+    foreach(QListWidgetItem* item, m_plWProductList->selectedItems())
+    {
+        m_productNamesToDelete.append(item->text());
+    }
+
+    QMessageBox::information(NULL,"QListWidget - Selected Items List",
+                             "Selected items are:\n"+m_productNamesToDelete.join("\n"));
+
+    loadDataFromXML();
+}
+
+void sitePriceProductRemoveGUI::loadDataFromXML()
+{
+    qDebug() << "sitePriceProductRemoveGUI::loadDataFromXML()";
+    m_plWProductList->clear();
+    //read data from file
+    QFile outputFile;
+    QDomDocument doc;
+    outputFile.setFileName(fileName);
+    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
+    {
+        qDebug() << "Function can't open file, or file don't have XML structure.";
+        m_plWProductList->addItem("Can't open file, or file don't have XML structure. Create product first!");
+        return;
+    }
+    QDomElement docElem = doc.documentElement();
+    QDomNode n = docElem.firstChild();
+
+    QStringList productNames;
+    while(!n.isNull())
+    {
+        QDomElement e = n.toElement(); // try to convert the node to an element.
+        if(!e.isNull())
+        {
+            if (e.tagName() == "product")
+            {
+                productNames.push_back(e.attribute("name"));
+            }
+        }
+        n = n.nextSibling();
+    }
+    m_plWProductList->addItems(productNames);
+    productNames.clear();
 }

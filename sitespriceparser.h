@@ -10,12 +10,11 @@ class QHBoxLayout;
 class QLineEdit;
 class QTextEdit;
 class QLabel;
-class sitePriceProductEditGUI;
-class sitePriceProductAddGUI;
 class QDomNode;
 class QFile;
 class QSplitter;
 class QComboBox;
+class QListWidget;
 
 class sitesPriceParserGUI : public QDialog
 {
@@ -28,6 +27,7 @@ public:
 public slots:
     void addProduct();
     void editProducts();
+    void removeProducts();
 
 private:
     QTextEdit *m_pTeProductList;
@@ -41,10 +41,9 @@ private:
     QPushButton *m_pBtnRemoveProduct;
     QPushButton *m_pBtnEditProduct;
     QPushButton *m_pBtnClose;
-
-    sitePriceProductAddGUI *m_pParserOpData;
-    sitePriceProductEditGUI *m_pProductEditGUI;
 };
+
+//__________product add class
 
 class sitePriceProductAddGUI : public QDialog
 {
@@ -75,6 +74,8 @@ private:
 };
 
 #endif // SITESPRICEPARSER_H
+
+//__________product edit class
 
 class sitePriceProductEditGUI : public QDialog
 {
@@ -116,6 +117,34 @@ private:
     void readProductsFromXML();
     void updateXMLDocument();
 };
+
+//__________product remove class
+
+class sitePriceProductRemoveGUI : public QDialog
+{
+    Q_OBJECT
+
+public:
+    explicit sitePriceProductRemoveGUI(QWidget *parent = 0);
+    ~sitePriceProductRemoveGUI();
+
+public slots:
+    void removeProducts();
+
+private:
+    QPushButton *m_pRemoveProductBtn;
+    QPushButton *m_pCloseBtn;
+
+    QVBoxLayout *m_pMainLayout;
+    QListWidget *m_plWProductList;
+
+    QString fileName;
+    QStringList m_productNamesToDelete;
+
+    void loadDataFromXML();
+};
+
+//__________programm template class
 
 class newStyle : public QProxyStyle
 {
