@@ -237,11 +237,6 @@ void sitePriceProductAddGUI::createXMLStructureInDocument()
     }
 }
 
-void sitePriceProductAddGUI::readData()
-{
-
-}
-
 sitePriceProductAddGUI::~sitePriceProductAddGUI()
 {
 
@@ -573,3 +568,256 @@ void sitePriceProductRemoveGUI::loadDataFromXML()
     m_plWProductList->addItems(productNames);
     productNames.clear();
 }
+
+//__________base class operations with XML document
+
+baseOperations::baseOperations()
+{
+    m_strFileName = QApplication::applicationDirPath() + "/data.xml";
+}
+
+baseOperations::~baseOperations()
+{
+
+}
+
+//void baseOperations::createXMLStructureInDocument()
+//{
+//    qDebug() << "*** createXMLStructureInDocument() ***";
+//    QDomDocument doc("products");
+//    QDomElement domElement = doc.createElement("products_to_parse_list");
+//    doc.appendChild(domElement);
+
+//    //QDomElement product = doc.createElement("product");
+//    //product.setAttribute("name", "empty");
+//    //product.setAttribute("link", "empty");
+
+//    //QDomElement link = doc.createElement("link");
+//    //link.setAttribute("link", "empty");
+//    //product.appendChild(link);
+
+//    //domElement.appendChild(product);
+
+//    QFile file(fileName);
+//    if(file.open(QIODevice::WriteOnly))
+//    {
+//        QTextStream(&file) << doc.toString();
+//        file.close();
+//    }
+//}
+
+//bool baseOperations::productExists(const QString &)
+//{
+//    qDebug() << "*** productExists() ***";
+//    QDomDocument doc;
+//    QFile file(fileName);
+//    if (!file.open(QIODevice::ReadOnly) || !doc.setContent(&file))
+//    {
+//        qDebug() << "productExists() = File not open or not have xml structure.";
+//        createXMLStructureInDocument();
+//    }
+//    QDomElement docElem = doc.documentElement();
+//    QDomNode n = docElem.firstChild();
+
+//    while(!n.isNull())
+//    {
+//        QDomElement e = n.toElement(); // try to convert the node to an element.
+//        if(!e.isNull())
+//        {
+//            if (e.tagName() == "product")
+//            {
+//                if (e.attribute("name") == _productName)
+//                {
+//                    QMessageBox::warning(this, "Product name exists!", "Product name exists, please choose another name of product");
+//                    return true;
+//                }
+//            }
+//        }
+//        n = n.nextSibling();
+//    }
+//    return false;
+//}
+
+//void baseOperations::updateXMLDocument()
+//{
+//    QMessageBox::StandardButton reply;
+//    if (QString(m_pLeProductNewName->text()).size() > 1)
+//    {
+//        reply = QMessageBox::question(this, "Confirm edit product", "Confirm edit?",
+//                                      QMessageBox::Yes | QMessageBox::No);
+//        if (reply == QMessageBox::Yes)
+//        {
+//            QStringList newLinks = QString(m_pTeProductLinks->toPlainText()).split('\n');
+//            newLinks.erase(std::unique(newLinks.begin(), newLinks.end()), newLinks.end());
+//            QString newName = m_pLeProductNewName->text();
+//            updateXMLDocument();
+//        }
+//    }
+//    else
+//        QMessageBox::warning(this, "Product not activated", "Please choose product!");
+//}
+
+//void baseOperations::readAllDataFromXML()
+//{
+//    //clear GUI elements
+//    m_pTeProductsList->clear();
+//    m_pTeProductLinks->clear();
+//    m_productLinks.clear();
+//    m_pCbProduct->clear();
+//    m_productName.clear();
+//    m_pLblStatusProducts->clear();
+
+//    //read data from file
+//    QFile outputFile;
+//    QDomDocument doc;
+//    outputFile.setFileName(fileName);
+//    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
+//    {
+//        qDebug() << "Function can't open file, or file don't have XML structure.";
+//        m_pTeProductsList->append("Can't open file, or file don't have XML structure. Create product first!");
+//        return;
+//    }
+//    QDomElement docElem = doc.documentElement();
+//    QDomNode n = docElem.firstChild();
+
+//    QString productName;
+//    QStringList productLinks;
+//    while(!n.isNull())
+//    {
+//        QDomElement e = n.toElement(); // try to convert the node to an element.
+//        if(!e.isNull())
+//        {
+//            if (e.tagName() == "product")
+//            {
+//                m_productName.push_back(e.attribute("name"));
+//                m_pTeProductsList->append(e.attribute("name"));
+//                productName = e.attribute("name");
+
+//                //get product links
+//                QDomNode node = n.firstChild();
+//                while(!node.isNull())
+//                {
+//                    QDomElement element = node.toElement();
+//                    if(!element.isNull())
+//                    {
+//                        productLinks.push_back(element.attribute("link"));
+//                    }
+//                    node = node.nextSibling();
+//                }
+//            }
+//        }
+//        n = n.nextSibling();
+//        m_productLinks.push_back( qMakePair(productName, productLinks) );
+//        productLinks.clear();
+//    }
+//    m_pLblStatusProducts->setText(m_pLblStatusProducts->text()
+//                                  + QString::number(m_productName.size()) + " products");
+//    m_pCbProduct->addItems(m_productName);
+//}
+
+//void baseOperations::readProductsFromXML()
+//{
+//    qDebug() << "sitePriceProductRemoveGUI::loadDataFromXML()";
+//    m_plWProductList->clear();
+//    //read data from file
+//    QFile outputFile;
+//    QDomDocument doc;
+//    outputFile.setFileName(fileName);
+//    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
+//    {
+//        qDebug() << "Function can't open file, or file don't have XML structure.";
+//        m_plWProductList->addItem("Can't open file, or file don't have XML structure. Create product first!");
+//        return;
+//    }
+//    QDomElement docElem = doc.documentElement();
+//    QDomNode n = docElem.firstChild();
+
+//    QStringList productNames;
+//    while(!n.isNull())
+//    {
+//        QDomElement e = n.toElement(); // try to convert the node to an element.
+//        if(!e.isNull())
+//        {
+//            if (e.tagName() == "product")
+//            {
+//                productNames.push_back(e.attribute("name"));
+//            }
+//        }
+//        n = n.nextSibling();
+//    }
+//    m_plWProductList->addItems(productNames);
+//    productNames.clear();
+//}
+
+//void baseOperations::addItemToXML(const QString &_productName, const QStringList &_productList)
+//{
+//    if (_productName.isEmpty())
+//    {
+//        QMessageBox::warning(this, "Empty product name", "Please chose product name!");
+//        return;
+//    }
+//    QFile outputFile;
+
+//    //if file don't exists create them
+//    if (!QFile(m_strFileName).exists())
+//    {
+//        outputFile.setFileName(m_strFileName);
+//        if  (!outputFile.open(QIODevice::WriteOnly))
+//        {
+//            qDebug() << "Coul'd not open file.";
+//            return;
+//        }
+//        outputFile.close();
+//    }
+//    //open file to work
+//    outputFile.setFileName(m_strFileName);
+//    if  (!outputFile.open(QIODevice::ReadWrite))
+//    {
+//        qDebug() << "Coul'd not open file!";
+//        return;
+//    }
+//    //проверить есть ли в документе позиция с таким названием
+//    QDomDocument doc;
+//    if(!doc.setContent(&outputFile))
+//    {
+//        qDebug( "Failed to parse the file into a DOM tree." );
+//        createXMLStructureInDocument();
+//        doc.setContent(&outputFile);
+//    }
+
+//    //add product to xml document
+//    if (!productExists(m_pLeProductName->text()))
+//    {
+//        QDomElement root = doc.documentElement();
+//        QDomElement new_product = doc.createElement("product");
+//        new_product.setAttribute("name", m_pLeProductName->text());
+//        root.appendChild(new_product);
+
+//        //parse links from QTextEdit
+//        QStringList links = QString(m_pTeLinksList->toPlainText()).split('\n');
+//        links.erase(std::unique(links.begin(), links.end()), links.end());
+
+//        for (int i(0); i < links.size(); ++i)
+//        {
+//            QString tmp = links.at(i);
+//            tmp.remove(" ");
+//            if (tmp.size() > 2)
+//            {
+//                QDomElement new_link = doc.createElement("links");
+//                new_link.setAttribute("link", links.at(i));
+//                new_product.appendChild(new_link);
+//            }
+//        }
+
+//        outputFile.close();
+//        outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+//        QTextStream(&outputFile) << doc.toString();
+//    }
+
+//    outputFile.close();
+//}
+
+//void baseOperations::removeItemFromXML()
+//{
+
+//}

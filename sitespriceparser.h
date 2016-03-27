@@ -2,6 +2,7 @@
 #define SITESPRICEPARSER_H
 
 #include <QDialog>
+#include <QObject>
 #include <QSettings>
 #include <QProxyStyle>
 
@@ -55,7 +56,6 @@ public:
 
 public slots:
     void addProduct();
-    void readData();
 
 private:
     QVBoxLayout *m_pMainLayout;
@@ -143,6 +143,35 @@ private:
 
     void loadDataFromXML();
 };
+
+//__________base class operations with XML document
+
+class baseOperations : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit baseOperations();
+    virtual ~baseOperations();
+
+    //work with XML
+//    void createXMLStructureInDocument();
+//    bool productExists(const QString&);
+//    void updateXMLDocument();
+
+//    //read XML
+//    void readAllDataFromXML();
+//    void readProductsFromXML();
+
+//    //add, remove item to XML
+      void addItemToXML(const QString&, const QStringList&);
+//    void removeItemFromXML();
+
+private:
+      QString m_strFileName;
+
+};
+
 
 //__________programm template class
 
