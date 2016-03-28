@@ -66,6 +66,7 @@ void sitesPriceParserGUI::addProduct()
 void sitesPriceParserGUI::editProducts()
 {
     Singleton< sitePriceProductEditGUI > wnd;
+    wnd.Instance()->readProductsFromXML();
     wnd.Instance()->setModal(true);
     wnd.Instance()->show();
 }
@@ -73,6 +74,7 @@ void sitesPriceParserGUI::editProducts()
 void sitesPriceParserGUI::removeProducts()
 {
     Singleton< sitePriceProductRemoveGUI > wnd;
+    wnd.Instance()->loadDataFromXML();
     wnd.Instance()->setModal(true);
     wnd.Instance()->show();
 }
@@ -134,9 +136,8 @@ sitePriceProductAddGUI::~sitePriceProductAddGUI()
 
 }
 
+//__________product edit class
 
-
-//product edit class
 sitePriceProductEditGUI::sitePriceProductEditGUI(QWidget *parent) : QDialog(parent)
 {
     this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
@@ -191,7 +192,6 @@ sitePriceProductEditGUI::sitePriceProductEditGUI(QWidget *parent) : QDialog(pare
     m_pMainLayout->addLayout(m_pProductEditLayout);
 
     setLayout(m_pMainLayout);
-    readProductsFromXML();
     //connect
     connect(m_pBtnClose, &QPushButton::clicked, this, &sitePriceProductEditGUI::close);
     connect(m_pCbProduct, &QComboBox::currentTextChanged, this, &sitePriceProductEditGUI::loadProductData);
@@ -218,23 +218,15 @@ void sitePriceProductEditGUI::readProductsFromXML()
     m_pLblStatusProducts->setText("Total: " + QString::number(m_pOperations.getProductNumbers()) + " products");
 }
 
-sitePriceProductEditGUI::~sitePriceProductEditGUI()
-{
-
-}
-
 void sitePriceProductEditGUI::loadProductData(QString _product)
 {
     m_pTeProductLinks->clear();
     m_pLeProductNewName->setText(_product);
 
-    //load links from pair array
-    for (const QString &str : m_pOperations.getProductsNames())
+    for (const QString &str : m_pOperations.getProductLinks(_product))
     {
-        m_pTeProductsList->append(str);
-        m_pCbProduct->addItem(str);
+        m_pTeProductLinks->append(str);
     }
-    //m_pTeProductLinks->setText();
 }
 
 void sitePriceProductEditGUI::updateProductData()
@@ -246,72 +238,22 @@ void sitePriceProductEditGUI::updateProductData()
                                       QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::Yes)
         {
-            QStringList newLinks = QString(m_pTeProductLinks->toPlainText()).split('\n');
-            newLinks.erase(std::unique(newLinks.begin(), newLinks.end()), newLinks.end());
-            QString newName = m_pLeProductNewName->text();
             m_pOperations.updateProduct(m_pLeProductNewName->text(), m_pTeProductLinks->toPlainText());
         }
     }
     else
         QMessageBox::warning(this, "Product not activated", "Please choose product!");
-}
-
-void sitePriceProductEditGUI::updateXMLDocument()
-{
-    QFile outputFile;
-    QDomDocument doc;
-    outputFile.setFileName(fileName);
-    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
-    {
-        qDebug() << "Function can't open file, or file don't have XML structure.";
-        m_pTeProductsList->append("Can't open file, or file don't have XML structure. Create product first!");
-        return;
-    }
-
-    //delete old element
-    QDomElement docElem = doc.documentElement();
-    QDomNode n = docElem.firstChild(); //product
-    while(!n.isNull())
-    {
-        QDomElement e = n.toElement(); // try to convert the node to an element.
-        if(!e.isNull())
-        {
-            if (e.tagName() == "product" && e.attribute("name") == m_pLeProductNewName->text())
-            {
-                docElem.removeChild(n);
-            }
-        }
-        n = n.nextSibling();
-    }
-
-    //add element with changes
-    QDomElement new_product = doc.createElement("product");
-    new_product.setAttribute("name", m_pLeProductNewName->text());
-    docElem.appendChild(new_product);
-
-    //parse links from QTextEdit
-    QStringList links = QString(m_pTeProductLinks->toPlainText()).split('\n');
-    links.erase(std::unique(links.begin(), links.end()), links.end());
-
-    for (int i(0); i < links.size(); ++i)
-    {
-        QString tmp = links.at(i);
-        tmp.remove(" ");
-        if (tmp.size() > 2)
-        {
-            QDomElement new_link = doc.createElement("links");
-            new_link.setAttribute("link", links.at(i));
-            new_product.appendChild(new_link);
-        }
-    }
-
-    outputFile.close();
-    outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-    QTextStream(&outputFile) << doc.toString();
-    outputFile.close();
+    m_pLblEditName->setText(tr(""));
+    m_pTeProductLinks->setText(tr(""));
     readProductsFromXML();
 }
 
+sitePriceProductEditGUI::~sitePriceProductEditGUI()
+{
+
+}
+
+//__________programm template class
 
 newStyle::newStyle() : QProxyStyle(QStyleFactory::create("Fusion"))
 {
@@ -335,6 +277,7 @@ void newStyle::polish(QPalette &darkPalette)
     darkPalette.setColor(QPalette::HighlightedText, Qt::black);
 }
 
+//__________product remove class
 
 sitePriceProductRemoveGUI::sitePriceProductRemoveGUI(QWidget *parent) : QDialog(parent)
 {
@@ -358,7 +301,6 @@ sitePriceProductRemoveGUI::sitePriceProductRemoveGUI(QWidget *parent) : QDialog(
     this->setLayout(m_pMainLayout);
 
     fileName = QApplication::applicationDirPath() + "/data.xml";
-    loadDataFromXML();
 
     //connect
     connect(m_pCloseBtn, &QPushButton::clicked, this, &sitePriceProductRemoveGUI::close);
@@ -366,58 +308,38 @@ sitePriceProductRemoveGUI::sitePriceProductRemoveGUI(QWidget *parent) : QDialog(
     //connect(m_plWProductList, &QListWidget::itemSelectionChanged, this, &sitePriceProductRemoveGUI::getProductNames);
 }
 
-sitePriceProductRemoveGUI::~sitePriceProductRemoveGUI()
-{
-
-}
-
 void sitePriceProductRemoveGUI::removeProducts()
 {
-    qDebug() << "sitePriceProductRemoveGUI::removeProducts()";
+    qDebug() << "void sitePriceProductRemoveGUI::removeProducts()";
     m_productNamesToDelete.clear();
     foreach(QListWidgetItem* item, m_plWProductList->selectedItems())
     {
         m_productNamesToDelete.append(item->text());
     }
 
-    QMessageBox::information(NULL,"QListWidget - Selected Items List",
-                             "Selected items are:\n"+m_productNamesToDelete.join("\n"));
-
+    if (m_productNamesToDelete.size() > 0)
+    {
+        if (m_pOperations.removeItemsFromXML(m_productNamesToDelete))
+            QMessageBox::information(this, tr("Sucess"), tr("Opearion sucessful"));
+    }
+    else
+        QMessageBox::information(this, tr("Not selected!"), tr("Please chose element!"));
     loadDataFromXML();
 }
 
 void sitePriceProductRemoveGUI::loadDataFromXML()
 {
-    qDebug() << "sitePriceProductRemoveGUI::loadDataFromXML()";
+    qDebug() << "void sitePriceProductRemoveGUI::loadDataFromXML()";
     m_plWProductList->clear();
-    //read data from file
-    QFile outputFile;
-    QDomDocument doc;
-    outputFile.setFileName(fileName);
-    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
+    for (const QString &str : m_pOperations.getProductsNames())
     {
-        qDebug() << "Function can't open file, or file don't have XML structure.";
-        m_plWProductList->addItem("Can't open file, or file don't have XML structure. Create product first!");
-        return;
+        m_plWProductList->addItem(str);
     }
-    QDomElement docElem = doc.documentElement();
-    QDomNode n = docElem.firstChild();
+}
 
-    QStringList productNames;
-    while(!n.isNull())
-    {
-        QDomElement e = n.toElement(); // try to convert the node to an element.
-        if(!e.isNull())
-        {
-            if (e.tagName() == "product")
-            {
-                productNames.push_back(e.attribute("name"));
-            }
-        }
-        n = n.nextSibling();
-    }
-    m_plWProductList->addItems(productNames);
-    productNames.clear();
+sitePriceProductRemoveGUI::~sitePriceProductRemoveGUI()
+{
+
 }
 
 //__________base class operations with XML document
@@ -610,7 +532,7 @@ const QStringList baseOperations::getProductLinks(const QString &_productName)
             if (pair.first == _productName)
             {
                 for( QString str : pair.second ){
-                    qDebug() << pair.second << str;
+                    _productLinks.push_back(str);
                 }
             }
     }
@@ -626,40 +548,6 @@ int baseOperations::getProductNumbers()
     }
     return 0;
 }
-
-//void baseOperations::readProductsFromXML()
-//{
-//    qDebug() << "sitePriceProductRemoveGUI::loadDataFromXML()";
-//    m_plWProductList->clear();
-//    //read data from file
-//    QFile outputFile;
-//    QDomDocument doc;
-//    outputFile.setFileName(fileName);
-//    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
-//    {
-//        qDebug() << "Function can't open file, or file don't have XML structure.";
-//        m_plWProductList->addItem("Can't open file, or file don't have XML structure. Create product first!");
-//        return;
-//    }
-//    QDomElement docElem = doc.documentElement();
-//    QDomNode n = docElem.firstChild();
-
-//    QStringList productNames;
-//    while(!n.isNull())
-//    {
-//        QDomElement e = n.toElement(); // try to convert the node to an element.
-//        if(!e.isNull())
-//        {
-//            if (e.tagName() == "product")
-//            {
-//                productNames.push_back(e.attribute("name"));
-//            }
-//        }
-//        n = n.nextSibling();
-//    }
-//    m_plWProductList->addItems(productNames);
-//    productNames.clear();
-//}
 
 bool baseOperations::addItemToXML(const QString &_productName, const QString &_productLinks)
 {
@@ -705,8 +593,6 @@ bool baseOperations::addItemToXML(const QString &_productName, const QString &_p
         new_product.setAttribute("name", _productName);
         root.appendChild(new_product);
 
-        //parse links from QTextEdit
-
         //links separation from string
         QStringList links = _productLinks.split('\n');
         links.erase(std::unique(links.begin(), links.end()), links.end());
@@ -727,15 +613,47 @@ bool baseOperations::addItemToXML(const QString &_productName, const QString &_p
         outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
         QTextStream(&outputFile) << doc.toString();
     }
+    else
+        return false;
     outputFile.close();
     return true;
 }
 
-//void baseOperations::removeItemFromXML()
-//{
-
-//}
-
+bool baseOperations::removeItemsFromXML(const QStringList &_productNames)
+{
+    QFile outputFile;
+    QDomDocument doc;
+    outputFile.setFileName(m_strFileName);
+    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
+    {
+        qDebug() << "Function can't open file, or file don't have XML structure.";
+        return false;
+    }
+    for (int i(0); i < _productNames.size(); ++i)
+    {
+        //delete old element
+        QDomElement docElem = doc.documentElement();
+        QDomNode n = docElem.firstChild(); //product
+        while(!n.isNull())
+        {
+            QDomElement e = n.toElement(); // try to convert the node to an element.
+            if(!e.isNull())
+            {
+                if (e.tagName() == "product" && e.attribute("name") == _productNames.at(i))
+                {
+                    docElem.removeChild(n);
+                }
+            }
+            n = n.nextSibling();
+        }
+    }
+    outputFile.close();
+    outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QTextStream(&outputFile) << doc.toString();
+    outputFile.close();
+    readAllDataFromXML();
+    return true;
+}
 
 baseOperations::~baseOperations()
 {

@@ -64,11 +64,10 @@ public:
     const QStringList getProductsNames();
     const QStringList getProductLinks(const QString&);
     int getProductNumbers();
-    //    void readProductsFromXML();
 
     //    //add, remove item to XML
     bool addItemToXML(const QString&, const QString&);
-    //    void removeItemFromXML();
+    bool removeItemsFromXML(const QStringList&);
 
 private:
     QString m_strFileName;
@@ -112,6 +111,7 @@ class sitePriceProductEditGUI : public QDialog
 
 public:
     explicit sitePriceProductEditGUI(QWidget *parent = 0);
+    void readProductsFromXML();
     ~sitePriceProductEditGUI();
 
 public slots:
@@ -143,8 +143,6 @@ private:
     QStringList m_productName;
     QVector< QPair<QString, QStringList> > m_productLinks;
 
-    void readProductsFromXML();
-    void updateXMLDocument();
     baseOperations m_pOperations;
 };
 
@@ -156,6 +154,7 @@ class sitePriceProductRemoveGUI : public QDialog
 
 public:
     explicit sitePriceProductRemoveGUI(QWidget *parent = 0);
+    void loadDataFromXML();
     ~sitePriceProductRemoveGUI();
 
 public slots:
@@ -171,7 +170,7 @@ private:
     QString fileName;
     QStringList m_productNamesToDelete;
 
-    void loadDataFromXML();
+    baseOperations m_pOperations;
 };
 
 //__________programm template class
