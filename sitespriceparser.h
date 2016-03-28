@@ -44,6 +44,37 @@ private:
     QPushButton *m_pBtnClose;
 };
 
+//__________base class operations with XML document
+
+class baseOperations : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit baseOperations();
+    virtual ~baseOperations();
+
+    //work with XML
+    void createXMLStructureInDocument();
+    bool productExists(const QString&);
+    void updateProduct(const QString&, const QString&);
+
+    //    //read XML
+    bool readAllDataFromXML();
+    const QStringList getProductsNames();
+    const QStringList getProductLinks(const QString&);
+    int getProductNumbers();
+    //    void readProductsFromXML();
+
+    //    //add, remove item to XML
+    bool addItemToXML(const QString&, const QString&);
+    //    void removeItemFromXML();
+
+private:
+    QString m_strFileName;
+    QVector< QPair<QString, QStringList> > m_dataFromXML;
+};
+
 //__________product add class
 
 class sitePriceProductAddGUI : public QDialog
@@ -68,9 +99,7 @@ private:
     QPushButton *m_pBtnCancel;
 
     QString fileName;
-
-    bool productExists(const QString&);
-    void createXMLStructureInDocument();
+    baseOperations m_pOperations;
 };
 
 #endif // SITESPRICEPARSER_H
@@ -116,6 +145,7 @@ private:
 
     void readProductsFromXML();
     void updateXMLDocument();
+    baseOperations m_pOperations;
 };
 
 //__________product remove class
@@ -143,35 +173,6 @@ private:
 
     void loadDataFromXML();
 };
-
-//__________base class operations with XML document
-
-class baseOperations : public QObject
-{
-    Q_OBJECT
-
-public:
-    explicit baseOperations();
-    virtual ~baseOperations();
-
-    //work with XML
-//    void createXMLStructureInDocument();
-//    bool productExists(const QString&);
-//    void updateXMLDocument();
-
-//    //read XML
-//    void readAllDataFromXML();
-//    void readProductsFromXML();
-
-//    //add, remove item to XML
-      void addItemToXML(const QString&, const QStringList&);
-//    void removeItemFromXML();
-
-private:
-      QString m_strFileName;
-
-};
-
 
 //__________programm template class
 
