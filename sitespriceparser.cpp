@@ -16,6 +16,8 @@
 #include <QStyleFactory>
 #include <QVector>
 #include <QListWidget>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
 #include "singleton.h"
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
@@ -28,6 +30,7 @@ sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
     m_pBtnEditProduct = new QPushButton(tr("Edit products"));
     m_pBtnRemoveProduct = new QPushButton(tr("Remove product"));
     m_pBtnClose = new QPushButton(tr("Quit"));
+    m_pBtnParseProducts = new QPushButton(tr("Parse products"));
 
     //lineedits
     m_pTeProductList = new QTextEdit();
@@ -37,6 +40,7 @@ sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
     m_pProductLayout->addWidget(m_pBtnAddProduct);
     m_pProductLayout->addWidget(m_pBtnEditProduct);
     m_pProductLayout->addWidget(m_pBtnRemoveProduct);
+    m_pProductLayout->addWidget(m_pBtnParseProducts);
     m_pProductLayout->addWidget(m_pBtnClose);
     m_pProductLayout->addWidget(m_pTeProductList);
 
@@ -49,6 +53,7 @@ sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
     connect(m_pBtnAddProduct, &QPushButton::clicked, this, &sitesPriceParserGUI::addProduct);
     connect(m_pBtnEditProduct, &QPushButton::clicked, this, &sitesPriceParserGUI::editProducts);
     connect(m_pBtnRemoveProduct, &QPushButton::clicked, this, &sitesPriceParserGUI::removeProducts);
+    connect(m_pBtnParseProducts, &QPushButton::clicked, this, &sitesPriceParserGUI::parseProducts);
 }
 
 sitesPriceParserGUI::~sitesPriceParserGUI()
@@ -66,7 +71,7 @@ void sitesPriceParserGUI::addProduct()
 void sitesPriceParserGUI::editProducts()
 {
     Singleton< sitePriceProductEditGUI > wnd;
-    wnd.Instance()->readProductsFromXML();
+    wnd.Instance()->readDataFromXMLToGUI();
     wnd.Instance()->setModal(true);
     wnd.Instance()->show();
 }
@@ -74,7 +79,15 @@ void sitesPriceParserGUI::editProducts()
 void sitesPriceParserGUI::removeProducts()
 {
     Singleton< sitePriceProductRemoveGUI > wnd;
-    wnd.Instance()->loadDataFromXML();
+    wnd.Instance()->readDataFromXMLToGUI();
+    wnd.Instance()->setModal(true);
+    wnd.Instance()->show();
+}
+
+void sitesPriceParserGUI::parseProducts()
+{
+    Singleton< webpageDownloaderGUI > wnd;
+    wnd.Instance()->readDataFromXMLToGUI();
     wnd.Instance()->setModal(true);
     wnd.Instance()->show();
 }
@@ -198,7 +211,7 @@ sitePriceProductEditGUI::sitePriceProductEditGUI(QWidget *parent) : QDialog(pare
     connect(m_pBtnUpdateProduct, &QPushButton::clicked, this, &sitePriceProductEditGUI::updateProductData);
 }
 
-void sitePriceProductEditGUI::readProductsFromXML()
+void sitePriceProductEditGUI::readDataFromXMLToGUI()
 {
     //clear GUI elements
     m_pTeProductsList->clear();
@@ -245,7 +258,7 @@ void sitePriceProductEditGUI::updateProductData()
         QMessageBox::warning(this, "Product not activated", "Please choose product!");
     m_pLblEditName->setText(tr(""));
     m_pTeProductLinks->setText(tr(""));
-    readProductsFromXML();
+    readDataFromXMLToGUI();
 }
 
 sitePriceProductEditGUI::~sitePriceProductEditGUI()
@@ -310,7 +323,7 @@ sitePriceProductRemoveGUI::sitePriceProductRemoveGUI(QWidget *parent) : QDialog(
 
 void sitePriceProductRemoveGUI::removeProducts()
 {
-    qDebug() << "void sitePriceProductRemoveGUI::removeProducts()";
+    //qDebug() << "void sitePriceProductRemoveGUI::removeProducts()";
     m_productNamesToDelete.clear();
     foreach(QListWidgetItem* item, m_plWProductList->selectedItems())
     {
@@ -324,12 +337,12 @@ void sitePriceProductRemoveGUI::removeProducts()
     }
     else
         QMessageBox::information(this, tr("Not selected!"), tr("Please chose element!"));
-    loadDataFromXML();
+    readDataFromXMLToGUI();
 }
 
-void sitePriceProductRemoveGUI::loadDataFromXML()
+void sitePriceProductRemoveGUI::readDataFromXMLToGUI()
 {
-    qDebug() << "void sitePriceProductRemoveGUI::loadDataFromXML()";
+    //qDebug() << "void sitePriceProductRemoveGUI::loadDataFromXML()";
     m_plWProductList->clear();
     for (const QString &str : m_pOperations.getProductsNames())
     {
@@ -351,7 +364,7 @@ baseOperations::baseOperations()
 
 void baseOperations::createXMLStructureInDocument()
 {
-    qDebug() << "*** createXMLStructureInDocument() ***";
+    //qDebug() << "*** createXMLStructureInDocument() ***";
     QDomDocument doc("products");
     QDomElement domElement = doc.createElement("products_to_parse_list");
     doc.appendChild(domElement);
@@ -376,7 +389,7 @@ void baseOperations::createXMLStructureInDocument()
 
 bool baseOperations::productExists(const QString &_productName)
 {
-    qDebug() << "*** productExists() ***";
+    //qDebug() << "*** productExists() ***";
     QDomDocument doc;
     QFile file(m_strFileName);
     if (!file.open(QIODevice::ReadOnly) || !doc.setContent(&file))
@@ -462,7 +475,7 @@ void baseOperations::updateProduct(const QString &_productName, const QString &_
 
 bool baseOperations::readAllDataFromXML()
 {
-    qDebug() << "bool baseOperations::readAllDataFromXML()";
+    //qDebug() << "bool baseOperations::readAllDataFromXML()";
     //clear data file
     m_dataFromXML.clear();
     //read data from file
@@ -510,7 +523,7 @@ bool baseOperations::readAllDataFromXML()
 
 const QStringList baseOperations::getProductsNames()
 {
-    qDebug() << "const QStringList baseOperations::getProductsNames()";
+    //qDebug() << "const QStringList baseOperations::getProductsNames()";
     QStringList _productNames;
     if (readAllDataFromXML())
     {
@@ -524,7 +537,7 @@ const QStringList baseOperations::getProductsNames()
 
 const QStringList baseOperations::getProductLinks(const QString &_productName)
 {
-    qDebug() << "const QStringList baseOperations::getProductsNames()";
+    //qDebug() << "const QStringList baseOperations::getProductsNames()";
     QStringList _productLinks;
     if (readAllDataFromXML())
     {
@@ -541,7 +554,7 @@ const QStringList baseOperations::getProductLinks(const QString &_productName)
 
 int baseOperations::getProductNumbers()
 {
-    qDebug() << "const QStringList baseOperations::getProductLinks(const QString &_productName)";
+    //qDebug() << "const QStringList baseOperations::getProductLinks(const QString &_productName)";
     if (readAllDataFromXML())
     {
         return m_dataFromXML.size();
@@ -658,4 +671,94 @@ bool baseOperations::removeItemsFromXML(const QStringList &_productNames)
 baseOperations::~baseOperations()
 {
 
+}
+
+//__________web pages downloader class
+
+webpageDownloader::webpageDownloader(QObject *parent) : QObject(parent)
+{
+    m_pNam = new QNetworkAccessManager(this);
+    connect(m_pNam, &QNetworkAccessManager::finished, this , &webpageDownloader::slotFinished);
+}
+
+void webpageDownloader::download(const QStringList &links)
+{
+    for (int i = 0; i < links.size(); ++i)
+    {
+        QNetworkRequest request(links.at(i));
+        QNetworkReply *reply = m_pNam->get(request);
+        connect(reply, &QNetworkReply::downloadProgress, this, &webpageDownloader::downloadProgress);
+    }
+}
+
+void webpageDownloader::slotFinished(QNetworkReply *reply)
+{
+    if (reply->error() != QNetworkReply::NoError)
+    {
+        emit error();
+    }
+    else
+    {
+        emit done(reply->url(), reply->readAll());
+    }
+    reply->deleteLater();
+}
+
+webpageDownloader::~webpageDownloader()
+{
+
+}
+
+
+webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
+{
+    this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
+    setWindowTitle("Webpage downloader");
+
+    //list widget
+    m_pLwProductsNames = new QListWidget();
+    m_pLwProductsNames->setSelectionMode(QAbstractItemView::ExtendedSelection);
+
+    //labels
+    m_pLblProducts = new QLabel(tr("Products"));
+
+    //buttons
+    m_pBtnCheckAll = new QPushButton(tr("Check All"));
+    m_pBtnParse = new QPushButton(tr("Parse"));
+    m_pBtnStopParse = new QPushButton(tr("Stop"));
+
+    //layouts
+    m_pActionsTab = new QVBoxLayout();
+    m_pActionsTab->setAlignment(Qt::AlignTop);
+    m_pActionsTab->addWidget(m_pBtnParse);
+    m_pActionsTab->addWidget(m_pBtnStopParse);
+
+    m_pProductsTab = new QVBoxLayout();
+    m_pProductsTab->addWidget(m_pLblProducts);
+    m_pProductsTab->addWidget(m_pLwProductsNames);
+    m_pProductsTab->addWidget(m_pBtnCheckAll);
+
+    m_pMainLayout = new QHBoxLayout(this);
+    m_pMainLayout->addLayout(m_pProductsTab);
+    m_pMainLayout->addLayout(m_pActionsTab);
+    setLayout(m_pMainLayout);
+
+    //connect
+    connect(m_pBtnCheckAll, &QPushButton::clicked, this, &webpageDownloaderGUI::slotCheckAll);
+}
+
+void webpageDownloaderGUI::readDataFromXMLToGUI()
+{
+    //qDebug() << "void webpageDownloaderGUI::readDataFromXMLToGUI()";
+    m_pLwProductsNames->clear();
+
+    for (const QString &str : m_operations.getProductsNames())
+    {
+        m_pLwProductsNames->addItem(str);
+    }
+}
+
+void webpageDownloaderGUI::slotCheckAll()
+{
+    m_pLwProductsNames->selectAll();
 }

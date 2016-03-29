@@ -16,6 +16,8 @@ class QFile;
 class QSplitter;
 class QComboBox;
 class QListWidget;
+class QNetworkAccessManager;
+class QNetworkReply;
 
 class sitesPriceParserGUI : public QDialog
 {
@@ -29,6 +31,7 @@ public slots:
     void addProduct();
     void editProducts();
     void removeProducts();
+    void parseProducts();
 
 private:
     QTextEdit *m_pTeProductList;
@@ -41,6 +44,7 @@ private:
     QPushButton *m_pBtnAddProduct;
     QPushButton *m_pBtnRemoveProduct;
     QPushButton *m_pBtnEditProduct;
+    QPushButton *m_pBtnParseProducts;
     QPushButton *m_pBtnClose;
 };
 
@@ -111,7 +115,7 @@ class sitePriceProductEditGUI : public QDialog
 
 public:
     explicit sitePriceProductEditGUI(QWidget *parent = 0);
-    void readProductsFromXML();
+    void readDataFromXMLToGUI();
     ~sitePriceProductEditGUI();
 
 public slots:
@@ -154,7 +158,7 @@ class sitePriceProductRemoveGUI : public QDialog
 
 public:
     explicit sitePriceProductRemoveGUI(QWidget *parent = 0);
-    void loadDataFromXML();
+    void readDataFromXMLToGUI();
     ~sitePriceProductRemoveGUI();
 
 public slots:
@@ -171,6 +175,56 @@ private:
     QStringList m_productNamesToDelete;
 
     baseOperations m_pOperations;
+};
+
+//__________web pages downloader class
+
+class webpageDownloader : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit webpageDownloader(QObject *parent = 0);
+    ~webpageDownloader();
+    void download(const QStringList&);
+
+private slots:
+    void slotFinished(QNetworkReply*);
+
+signals:
+    void downloadProgress(quint64, quint64);
+    void done(const QUrl&, const QByteArray&);
+    void error();
+
+private:
+    QNetworkAccessManager *m_pNam;
+};
+
+class webpageDownloaderGUI : public QDialog
+{
+    Q_OBJECT
+
+public:
+    explicit webpageDownloaderGUI(QWidget *parent = 0);
+    void readDataFromXMLToGUI();
+
+private slots:
+    void slotCheckAll();
+
+private:
+    QListWidget *m_pLwProductsNames;
+
+    QLabel *m_pLblProducts;
+
+    QPushButton *m_pBtnCheckAll;
+    QPushButton *m_pBtnParse;
+    QPushButton *m_pBtnStopParse;
+
+    QVBoxLayout *m_pProductsTab;
+    QVBoxLayout *m_pActionsTab;
+    QHBoxLayout *m_pMainLayout;
+
+    baseOperations m_operations;
 };
 
 //__________programm template class

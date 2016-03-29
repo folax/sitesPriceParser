@@ -1,5 +1,6 @@
 QT += widgets
 QT += xml
+QT += network
 
 CONFIG += c++11
 
@@ -21,4 +22,5 @@ RESOURCES += \
 
 RC_ICONS = /images/app.ico
 RC_FILE = app.rc
+
 
