@@ -18,6 +18,7 @@
 #include <QListWidget>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
+#include <QProgressBar>
 #include "singleton.h"
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
@@ -715,12 +716,18 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
     setWindowTitle("Webpage downloader");
 
+    m_pDownloader = new webpageDownloader(this);
+
+    //progress bar
+    m_pPb = new QProgressBar;
+
     //list widget
     m_pLwProductsNames = new QListWidget();
     m_pLwProductsNames->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     //labels
     m_pLblProducts = new QLabel(tr("Products"));
+    m_pTmp = new QLabel(tr("TMP"));
 
     //buttons
     m_pBtnCheckAll = new QPushButton(tr("Check All"));
@@ -741,10 +748,15 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pMainLayout = new QHBoxLayout(this);
     m_pMainLayout->addLayout(m_pProductsTab);
     m_pMainLayout->addLayout(m_pActionsTab);
+    m_pMainLayout->addWidget(m_pTmp);
+    m_pMainLayout->addWidget(m_pPb);
     setLayout(m_pMainLayout);
 
     //connect
     connect(m_pBtnCheckAll, &QPushButton::clicked, this, &webpageDownloaderGUI::slotCheckAll);
+    connect(m_pBtnParse, &QPushButton::clicked, this, &webpageDownloaderGUI::slotParseProducts);
+    connect(m_pDownloader, &webpageDownloader::downloadProgress, this, &webpageDownloaderGUI::slotDownloadProgress);
+    connect(m_pDownloader, &webpageDownloader::done, this, &webpageDownloaderGUI::slotDone);
 }
 
 void webpageDownloaderGUI::readDataFromXMLToGUI()
@@ -761,4 +773,26 @@ void webpageDownloaderGUI::readDataFromXMLToGUI()
 void webpageDownloaderGUI::slotCheckAll()
 {
     m_pLwProductsNames->selectAll();
+}
+
+void webpageDownloaderGUI::slotParseProducts()
+{
+    QStringList links;
+    links << "http://rozetka.com.ua/acer_nx_q07eu_010/p6561160/" << "https://f.ua/josera/economi-20kg-4032254212003.html";
+    m_pDownloader->download(links);
+}
+
+void webpageDownloaderGUI::slotDownloadProgress(quint64 _received, quint64 _total)
+{
+    if (_total <= 0)
+    {
+        //slotError();
+        return;
+    }
+    m_pPb->setValue(100 * _received / _total);
+}
+
+void webpageDownloaderGUI::slotDone(const QUrl &url, const QByteArray &ba)
+{
+    qDebug() << ba.size() << url;
 }

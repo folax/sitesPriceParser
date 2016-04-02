@@ -18,6 +18,8 @@ class QComboBox;
 class QListWidget;
 class QNetworkAccessManager;
 class QNetworkReply;
+class QNetworkAccessManager;
+class QProgressBar;
 
 class sitesPriceParserGUI : public QDialog
 {
@@ -210,11 +212,15 @@ public:
 
 private slots:
     void slotCheckAll();
+    void slotParseProducts();
+    void slotDownloadProgress(quint64, quint64);
+    void slotDone(const QUrl&, const QByteArray&);
 
 private:
     QListWidget *m_pLwProductsNames;
 
     QLabel *m_pLblProducts;
+    QLabel *m_pTmp;
 
     QPushButton *m_pBtnCheckAll;
     QPushButton *m_pBtnParse;
@@ -224,7 +230,11 @@ private:
     QVBoxLayout *m_pActionsTab;
     QHBoxLayout *m_pMainLayout;
 
+    QProgressBar *m_pPb;
+
     baseOperations m_operations;
+    webpageDownloader *m_pDownloader;
+    QNetworkAccessManager *m_pManager;
 };
 
 //__________programm template class
