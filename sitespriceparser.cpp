@@ -710,6 +710,7 @@ webpageDownloader::~webpageDownloader()
 
 }
 
+//__________ webpage DownloaderGUI;
 
 webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
 {
@@ -777,9 +778,18 @@ void webpageDownloaderGUI::slotCheckAll()
 
 void webpageDownloaderGUI::slotParseProducts()
 {
-    QStringList links;
-    links << "http://rozetka.com.ua/acer_nx_q07eu_010/p6561160/" << "https://f.ua/josera/economi-20kg-4032254212003.html";
-    m_pDownloader->download(links);
+    m_pLblProducts->clear();
+    foreach(QListWidgetItem *item, m_pLwProductsNames->selectedItems())
+    {
+        m_sLProductName.append(item->text());
+    }
+    if (m_sLProductName.size() > 0)
+    {
+        for (int i(0); i < m_sLProductName.size(); ++i)
+        {
+            m_pDownloader->download(m_operations.getProductLinks(m_sLProductName.at(i)));
+        }
+    }
 }
 
 void webpageDownloaderGUI::slotDownloadProgress(quint64 _received, quint64 _total)

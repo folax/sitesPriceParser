@@ -235,6 +235,7 @@ private:
     baseOperations m_operations;
     webpageDownloader *m_pDownloader;
     QNetworkAccessManager *m_pManager;
+    QStringList m_sLProductName;
 };
 
 //__________programm template class
