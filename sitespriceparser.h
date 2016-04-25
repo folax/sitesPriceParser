@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QSettings>
 #include <QProxyStyle>
+#include <QWebView>
 
 class QVBoxLayout;
 class QHBoxLayout;
@@ -16,9 +17,6 @@ class QFile;
 class QSplitter;
 class QComboBox;
 class QListWidget;
-class QNetworkAccessManager;
-class QNetworkReply;
-class QNetworkAccessManager;
 class QProgressBar;
 
 class sitesPriceParserGUI : public QDialog
@@ -191,15 +189,11 @@ public:
     void download(const QStringList&);
 
 private slots:
-    void slotFinished(QNetworkReply*);
 
-signals:
-    void downloadProgress(quint64, quint64);
-    void done(const QUrl&, const QByteArray&);
-    void error();
 
 private:
-    QNetworkAccessManager *m_pNam;
+
+
 };
 
 class webpageDownloaderGUI : public QDialog
@@ -213,8 +207,6 @@ public:
 private slots:
     void slotCheckAll();
     void slotParseProducts();
-    void slotDownloadProgress(quint64, quint64);
-    void slotDone(const QUrl&, const QByteArray&);
 
 private:
     QListWidget *m_pLwProductsNames;
@@ -233,9 +225,8 @@ private:
     QProgressBar *m_pPb;
 
     baseOperations m_operations;
-    webpageDownloader *m_pDownloader;
-    QNetworkAccessManager *m_pManager;
     QStringList m_sLProductName;
+    webpageDownloader *m_pWpDownloader;
 };
 
 //__________programm template class

@@ -16,9 +16,16 @@
 #include <QStyleFactory>
 #include <QVector>
 #include <QListWidget>
-#include <QtNetwork/QNetworkAccessManager>
-#include <QtNetwork/QNetworkReply>
 #include <QProgressBar>
+#include <QList>
+
+#include <QWebElement>
+#include <QUrl>
+#include <QWebFrame>
+#include <QWebPage>
+#include <QNetworkReply>
+#include <QNetworkAccessManager>
+
 #include "singleton.h"
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
@@ -678,31 +685,16 @@ baseOperations::~baseOperations()
 
 webpageDownloader::webpageDownloader(QObject *parent) : QObject(parent)
 {
-    m_pNam = new QNetworkAccessManager(this);
-    connect(m_pNam, &QNetworkAccessManager::finished, this , &webpageDownloader::slotFinished);
+
 }
 
 void webpageDownloader::download(const QStringList &links)
 {
-    for (int i = 0; i < links.size(); ++i)
-    {
-        QNetworkRequest request(links.at(i));
-        QNetworkReply *reply = m_pNam->get(request);
-        connect(reply, &QNetworkReply::downloadProgress, this, &webpageDownloader::downloadProgress);
-    }
-}
+    QNetworkAccessManager nam;
+    QNetworkReply *reply = nam.get(QNetworkRequest(QUrl(links.at(0))));
 
-void webpageDownloader::slotFinished(QNetworkReply *reply)
-{
-    if (reply->error() != QNetworkReply::NoError)
-    {
-        emit error();
-    }
-    else
-    {
-        emit done(reply->url(), reply->readAll());
-    }
-    reply->deleteLater();
+
+    qDebug() << reply;
 }
 
 webpageDownloader::~webpageDownloader()
@@ -717,7 +709,7 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
     setWindowTitle("Webpage downloader");
 
-    m_pDownloader = new webpageDownloader(this);
+    m_pWpDownloader = new webpageDownloader(this);
 
     //progress bar
     m_pPb = new QProgressBar;
@@ -756,8 +748,6 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     //connect
     connect(m_pBtnCheckAll, &QPushButton::clicked, this, &webpageDownloaderGUI::slotCheckAll);
     connect(m_pBtnParse, &QPushButton::clicked, this, &webpageDownloaderGUI::slotParseProducts);
-    connect(m_pDownloader, &webpageDownloader::downloadProgress, this, &webpageDownloaderGUI::slotDownloadProgress);
-    connect(m_pDownloader, &webpageDownloader::done, this, &webpageDownloaderGUI::slotDone);
 }
 
 void webpageDownloaderGUI::readDataFromXMLToGUI()
@@ -778,6 +768,7 @@ void webpageDownloaderGUI::slotCheckAll()
 
 void webpageDownloaderGUI::slotParseProducts()
 {
+    m_sLProductName.clear();
     m_pLblProducts->clear();
     foreach(QListWidgetItem *item, m_pLwProductsNames->selectedItems())
     {
@@ -787,22 +778,8 @@ void webpageDownloaderGUI::slotParseProducts()
     {
         for (int i(0); i < m_sLProductName.size(); ++i)
         {
-            m_pDownloader->download(m_operations.getProductLinks(m_sLProductName.at(i)));
+            m_pWpDownloader->download(m_operations.getProductLinks(m_sLProductName.at(i)));
         }
     }
 }
 
-void webpageDownloaderGUI::slotDownloadProgress(quint64 _received, quint64 _total)
-{
-    if (_total <= 0)
-    {
-        //slotError();
-        return;
-    }
-    m_pPb->setValue(100 * _received / _total);
-}
-
-void webpageDownloaderGUI::slotDone(const QUrl &url, const QByteArray &ba)
-{
-    qDebug() << ba.size() << url;
-}

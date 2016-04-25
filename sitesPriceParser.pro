@@ -1,6 +1,7 @@
 QT += widgets
 QT += xml
 QT += network
+QT += webkitwidgets
 
 CONFIG += c++11
 
