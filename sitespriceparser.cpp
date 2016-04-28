@@ -20,11 +20,16 @@
 #include <QList>
 
 #include <QWebElement>
-#include <QUrl>
 #include <QWebFrame>
 #include <QWebPage>
 #include <QNetworkReply>
 #include <QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
+#include <QtNetwork/QNetworkRequest>
+#include <QUrl>
+#include <QEventLoop>
+#include <QFile>
+#include <QWebView>
 
 #include "singleton.h"
 
@@ -690,11 +695,57 @@ webpageDownloader::webpageDownloader(QObject *parent) : QObject(parent)
 
 void webpageDownloader::download(const QStringList &links)
 {
-    QNetworkAccessManager nam;
-    QNetworkReply *reply = nam.get(QNetworkRequest(QUrl(links.at(0))));
+    QString dataFromReply;
+    for(int i(0); i < links.size(); ++i)
+    {
+        QEventLoop eventLoop;
+        QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+
+        connect(nam, &QNetworkAccessManager::finished, &eventLoop, &QEventLoop::quit);
+
+        QNetworkRequest request;
+        request.setUrl(QUrl(links.at(i)));
+
+        QNetworkReply *reply = nam->get(request);
+        eventLoop.exec();
+
+        //read data from reply
+        QByteArray bytes;
+        if(reply->error() == QNetworkReply::NoError)
+        {
+            bytes = reply->readAll();
+        }
+
+        //        //write to file
+        //        QFile replyFile("siteData.html");
+        //        replyFile.open(QIODevice::WriteOnly);
+        //        replyFile.write(bytes);
+        //        replyFile.close();
+
+        QWebPage webPage;
+        webPage.mainFrame()->setContent(bytes);
+        QWebFrame *frame;
+        frame = webPage.mainFrame();
+        QWebElement price = frame->findFirstElement("div#price_label");
+        qDebug() << price.toPlainText();
 
 
-    qDebug() << reply;
+
+        //        QWebPage page;
+        //        page.mainFrame()->setContent(bytes);
+        //        QWebFrame *frame;
+        //        QWebElementCollection elements;
+        //        QWebElement element;
+
+        //        frame = page.mainFrame();
+        //        element = frame->findFirstElement("*");
+        //        elements = frame->findAllElements("div");
+
+        //        foreach (QWebElement paraElement, elements) {
+        //            qDebug() << "Element: " << paraElement.toPlainText();
+        //        }
+        //        qDebug() << "Element data: "<< element.tagName() << " Reply size: "<< bytes.size();
+    }
 }
 
 webpageDownloader::~webpageDownloader()
