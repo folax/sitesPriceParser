@@ -30,6 +30,7 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QWebView>
+#include <QXmlStreamReader>
 
 #include "singleton.h"
 
@@ -695,7 +696,6 @@ webpageDownloader::webpageDownloader(QObject *parent) : QObject(parent)
 
 void webpageDownloader::download(const QStringList &links)
 {
-    QString dataFromReply;
     for(int i(0); i < links.size(); ++i)
     {
         QEventLoop eventLoop;
@@ -716,31 +716,38 @@ void webpageDownloader::download(const QStringList &links)
             bytes = reply->readAll();
         }
 
-        //        //write to file
-        //        QFile replyFile("siteData.html");
-        //        replyFile.open(QIODevice::WriteOnly);
-        //        replyFile.write(bytes);
-        //        replyFile.close();
+        //write to file
+        QFile replyFile("siteDataTmp.html");
+        replyFile.open(QIODevice::WriteOnly);
+        replyFile.write(bytes);
+        replyFile.close();
 
-        QWebPage webPage;
-        webPage.mainFrame()->setContent(bytes);
-        QWebFrame *frame;
-        frame = webPage.mainFrame();
-        QWebElement price = frame->findFirstElement("div#price_label");
-        qDebug() << price.toPlainText();
+        //read from file
+        QByteArray dataFromFileBa;
+        replyFile.open(QIODevice::ReadOnly);
+        dataFromFileBa = replyFile.readAll();
+        replyFile.close();
+
+        bytes.clear();
+
+        QXmlStreamReader htmlReader(dataFromFileBa);
+        while(!htmlReader.atEnd())
+        {
+           qDebug() << htmlReader.readNext();
+
+        }
+
+        if (dataFromFileBa.contains("price_label"))
+        {
+            qDebug() << "MATCH";
+        }
 
 
 
-        //        QWebPage page;
-        //        page.mainFrame()->setContent(bytes);
-        //        QWebFrame *frame;
-        //        QWebElementCollection elements;
-        //        QWebElement element;
-
-        //        frame = page.mainFrame();
-        //        element = frame->findFirstElement("*");
-        //        elements = frame->findAllElements("div");
-
+        //        QWebPage webPage;
+        //        webPage.mainFrame()->setContent(bytes);
+        //        QString content = webPage.mainFrame()->toHtml();
+        //        QWebElement price = webPage.mainFrame()->findFirstElement("*");
         //        foreach (QWebElement paraElement, elements) {
         //            qDebug() << "Element: " << paraElement.toPlainText();
         //        }
