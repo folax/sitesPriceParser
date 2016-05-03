@@ -18,6 +18,7 @@ class QSplitter;
 class QComboBox;
 class QListWidget;
 class QProgressBar;
+//class QDialog;
 
 class sitesPriceParserGUI : public QDialog
 {
@@ -63,19 +64,28 @@ public:
     bool productExists(const QString&);
     void updateProduct(const QString&, const QString&);
 
-    //    //read XML
+    //read XML
     bool readAllDataFromXML();
     const QStringList getProductsNames();
     const QStringList getProductLinks(const QString&);
     int getProductNumbers();
 
-    //    //add, remove item to XML
+    //add, remove item to XML
     bool addItemToXML(const QString&, const QString&);
     bool removeItemsFromXML(const QStringList&);
 
+    //work with signatures XML
+    void createXMLStructureInSignaturesDoc();
+    bool writeSignatures(const QString&, const QString&);
+    bool signatureExists(const QString&);
+    bool readAllDataFromSignXML();
+    const QStringList getSignaturesNames();
+
 private:
     QString m_strFileName;
+    QString m_strSignName;
     QVector< QPair<QString, QStringList> > m_dataFromXML;
+    QVector< QPair<QString, QString> > m_dataFromSignXML;
 };
 
 //__________product add class
@@ -190,9 +200,8 @@ public:
 
 private slots:
 
-
 private:
-
+    void analizeHTML(const QByteArray&);
 
 };
 
@@ -207,16 +216,22 @@ public:
 private slots:
     void slotCheckAll();
     void slotParseProducts();
+    void addSignatureSlot();
+    void showAddSignDialogSlot();
 
 private:
     QListWidget *m_pLwProductsNames;
+    QListWidget *m_pLwSignatures;
 
     QLabel *m_pLblProducts;
     QLabel *m_pTmp;
+    QLabel *m_pLblSignatures;
 
     QPushButton *m_pBtnCheckAll;
     QPushButton *m_pBtnParse;
     QPushButton *m_pBtnStopParse;
+    QPushButton *m_pBtnAddSignature;
+    QPushButton *m_pBtnRemoveSignature;
 
     QVBoxLayout *m_pProductsTab;
     QVBoxLayout *m_pActionsTab;
@@ -227,6 +242,9 @@ private:
     baseOperations m_operations;
     QStringList m_sLProductName;
     webpageDownloader *m_pWpDownloader;
+
+    QDialog *m_pAddSignature;
+    QString temp_String;
 };
 
 //__________programm template class

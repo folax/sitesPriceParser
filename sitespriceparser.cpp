@@ -18,6 +18,7 @@
 #include <QListWidget>
 #include <QProgressBar>
 #include <QList>
+#include <QPair>
 
 #include <QWebElement>
 #include <QWebFrame>
@@ -30,7 +31,6 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QWebView>
-#include <QXmlStreamReader>
 
 #include "singleton.h"
 
@@ -373,7 +373,8 @@ sitePriceProductRemoveGUI::~sitePriceProductRemoveGUI()
 
 baseOperations::baseOperations()
 {
-    m_strFileName = QApplication::applicationDirPath() + "/data.xml";
+    m_strFileName = QApplication::applicationDirPath() + "/products.xml";
+    m_strSignName = QApplication::applicationDirPath() + "/signatures.xml";
 }
 
 void baseOperations::createXMLStructureInDocument()
@@ -394,6 +395,20 @@ void baseOperations::createXMLStructureInDocument()
     //domElement.appendChild(product);
 
     QFile file(m_strFileName);
+    if(file.open(QIODevice::WriteOnly))
+    {
+        QTextStream(&file) << doc.toString();
+        file.close();
+    }
+}
+
+void baseOperations::createXMLStructureInSignaturesDoc()
+{
+    QDomDocument doc("signatures");
+    QDomElement domElement = doc.createElement("signatures_to_parse_list");
+    doc.appendChild(domElement);
+
+    QFile file(m_strSignName);
     if(file.open(QIODevice::WriteOnly))
     {
         QTextStream(&file) << doc.toString();
@@ -431,6 +446,101 @@ bool baseOperations::productExists(const QString &_productName)
         n = n.nextSibling();
     }
     return false;
+}
+
+bool baseOperations::signatureExists(const QString &_signName)
+{
+    //qDebug() << "*** productExists() ***";
+    QDomDocument doc;
+    QFile file(m_strSignName);
+    if (!file.open(QIODevice::ReadOnly) || !doc.setContent(&file))
+    {
+        qDebug() << "signatureExists() = File not open or not have xml structure.";
+        createXMLStructureInSignaturesDoc();
+    }
+    QDomElement docElem = doc.documentElement();
+    QDomNode n = docElem.firstChild();
+
+    while(!n.isNull())
+    {
+        QDomElement e = n.toElement(); // try to convert the node to an element.
+        if(!e.isNull())
+        {
+            if (e.tagName() == "signature")
+            {
+                if (e.attribute("name") == _signName)
+                {
+                    QMessageBox::warning(NULL, "Product name exists!", "Product name exists, please choose another name of product");
+                    return true;
+                }
+            }
+        }
+        n = n.nextSibling();
+    }
+    return false;
+}
+
+bool baseOperations::readAllDataFromSignXML()
+{
+    //check file
+    QFile outFile;
+    if (!QFile(m_strSignName).exists())
+    {
+        outFile.setFileName(m_strSignName);
+        if (!outFile.open(QIODevice::WriteOnly))
+        {
+            qDebug() << "void baseOperations::writeSignatures(QPair<QString, QString>) : " << "Coul'd not create file";
+            return false;
+        }
+        createXMLStructureInSignaturesDoc();
+    }
+    outFile.close();
+
+    //clear data file
+    m_dataFromSignXML.clear();
+
+    //read data from file
+    QDomDocument doc;
+    outFile.setFileName(m_strSignName);
+    if (!outFile.open(QIODevice::ReadOnly) || !doc.setContent(&outFile))
+    {
+        qDebug() << "Function can't open file, or file don't have XML structure.";
+        return false;
+    }
+    QDomElement docElem = doc.documentElement();
+    QDomNode n = docElem.firstChild();
+
+    QString siteName;
+    QString siteSign;
+    while(!n.isNull())
+    {
+        QDomElement e = n.toElement(); // try to convert the node to an element.
+        if(!e.isNull())
+        {
+            if (e.tagName() == "signature")
+            {
+                siteName = e.attribute("name");
+                siteSign = e.attribute("sign");
+            }
+        }
+        n = n.nextSibling();
+        m_dataFromSignXML.push_back( qMakePair(siteName, siteSign) );
+    }
+    return true;
+}
+
+const QStringList baseOperations::getSignaturesNames()
+{
+    //qDebug() << "const QStringList baseOperations::getSignaturesNames()";
+    QStringList _signaturesNames;
+    if (readAllDataFromSignXML())
+    {
+        for( QPair<QString, QString> pair : m_dataFromSignXML )
+        {
+            _signaturesNames.push_back(pair.first);
+        }
+    }
+    return _signaturesNames;
 }
 
 void baseOperations::updateProduct(const QString &_productName, const QString &_productLinks)
@@ -489,14 +599,27 @@ void baseOperations::updateProduct(const QString &_productName, const QString &_
 
 bool baseOperations::readAllDataFromXML()
 {
-    //qDebug() << "bool baseOperations::readAllDataFromXML()";
+    //check file
+    QFile outFile;
+    if (!QFile(m_strFileName).exists())
+    {
+        outFile.setFileName(m_strFileName);
+        if (!outFile.open(QIODevice::WriteOnly))
+        {
+            qDebug() << "bool baseOperations::readAllDataFromXML() : " << "Coul'd not create file";
+            return false;
+        }
+        createXMLStructureInDocument();
+    }
+    outFile.close();
+
+
     //clear data file
     m_dataFromXML.clear();
     //read data from file
-    QFile outputFile;
     QDomDocument doc;
-    outputFile.setFileName(m_strFileName);
-    if (!outputFile.open(QIODevice::ReadOnly) || !doc.setContent(&outputFile))
+    outFile.setFileName(m_strFileName);
+    if (!outFile.open(QIODevice::ReadOnly) || !doc.setContent(&outFile))
     {
         qDebug() << "Function can't open file, or file don't have XML structure.";
         return false;
@@ -589,7 +712,7 @@ bool baseOperations::addItemToXML(const QString &_productName, const QString &_p
     if (!QFile(m_strFileName).exists())
     {
         outputFile.setFileName(m_strFileName);
-        if  (!outputFile.open(QIODevice::WriteOnly))
+        if (!outputFile.open(QIODevice::WriteOnly))
         {
             qDebug() << "Coul'd not open file.";
             return false;
@@ -598,12 +721,11 @@ bool baseOperations::addItemToXML(const QString &_productName, const QString &_p
     }
     //open file to work
     outputFile.setFileName(m_strFileName);
-    if  (!outputFile.open(QIODevice::ReadWrite))
+    if (!outputFile.open(QIODevice::ReadWrite))
     {
         qDebug() << "Coul'd not open file!";
         return false;
     }
-    //проверить есть ли в документе позиция с таким названием
     QDomDocument doc;
     if(!doc.setContent(&outputFile))
     {
@@ -682,6 +804,53 @@ bool baseOperations::removeItemsFromXML(const QStringList &_productNames)
     return true;
 }
 
+bool baseOperations::writeSignatures(const QString &_name, const QString &_sign)
+{
+    //check file exists
+    QFile outFile;
+    if (!QFile(m_strSignName).exists())
+    {
+        outFile.setFileName(m_strSignName);
+        if (!outFile.open(QIODevice::WriteOnly))
+        {
+            qDebug() << "void baseOperations::writeSignatures(QPair<QString, QString>) : " << "Coul'd not create file";
+            return false;
+        }
+    }
+    outFile.close();
+
+    outFile.setFileName(m_strSignName);
+    if (!outFile.open(QIODevice::ReadWrite))
+    {
+        qDebug() << "void baseOperations::writeSignatures(QPair<QString, QString>) : " << "Coul'd not open file!";
+        return false;
+    }
+    QDomDocument doc;
+    if(!doc.setContent(&outFile))
+    {
+        qDebug() << "void baseOperations::writeSignatures(QPair<QString, QString>) : " << "Failed to parse the file into a DOM tree.";
+        createXMLStructureInSignaturesDoc();
+        doc.setContent(&outFile);
+    }
+    //add signature to xml document
+    if (!signatureExists(_name))
+    {
+        QDomElement root = doc.documentElement();
+        QDomElement new_signature = doc.createElement("signature");
+        new_signature.setAttribute("name", _name);
+        new_signature.setAttribute("sign", _sign);
+        root.appendChild(new_signature);
+
+        outFile.close();
+        outFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+        QTextStream(&outFile) << doc.toString();
+    }
+    else
+        return false;
+    outFile.close();
+    return true;
+}
+
 baseOperations::~baseOperations()
 {
 
@@ -729,18 +898,7 @@ void webpageDownloader::download(const QStringList &links)
         replyFile.close();
 
         bytes.clear();
-
-        QXmlStreamReader htmlReader(dataFromFileBa);
-        while(!htmlReader.atEnd())
-        {
-           qDebug() << htmlReader.readNext();
-
-        }
-
-        if (dataFromFileBa.contains("price_label"))
-        {
-            qDebug() << "MATCH";
-        }
+        analizeHTML(dataFromFileBa);
 
 
 
@@ -753,6 +911,12 @@ void webpageDownloader::download(const QStringList &links)
         //        }
         //        qDebug() << "Element data: "<< element.tagName() << " Reply size: "<< bytes.size();
     }
+}
+
+void webpageDownloader::analizeHTML(const QByteArray &ba)
+{
+    if (ba.contains("price_label") && ba.contains("rozetka.com.ua"))
+        qDebug() << "MATCH";
 }
 
 webpageDownloader::~webpageDownloader()
@@ -775,15 +939,20 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     //list widget
     m_pLwProductsNames = new QListWidget();
     m_pLwProductsNames->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    m_pLwSignatures = new QListWidget();
+    m_pLwSignatures->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     //labels
     m_pLblProducts = new QLabel(tr("Products"));
     m_pTmp = new QLabel(tr("TMP"));
+    m_pLblSignatures = new QLabel(tr("Signatures:"));
 
     //buttons
     m_pBtnCheckAll = new QPushButton(tr("Check All"));
     m_pBtnParse = new QPushButton(tr("Parse"));
     m_pBtnStopParse = new QPushButton(tr("Stop"));
+    m_pBtnAddSignature = new QPushButton(tr("Add Signature"));
+    m_pBtnRemoveSignature = new QPushButton(tr("Remove Signature"));
 
     //layouts
     m_pActionsTab = new QVBoxLayout();
@@ -795,6 +964,10 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pProductsTab->addWidget(m_pLblProducts);
     m_pProductsTab->addWidget(m_pLwProductsNames);
     m_pProductsTab->addWidget(m_pBtnCheckAll);
+    m_pProductsTab->addWidget(m_pLblSignatures);
+    m_pProductsTab->addWidget(m_pLwSignatures);
+    m_pProductsTab->addWidget(m_pBtnAddSignature);
+    m_pProductsTab->addWidget(m_pBtnRemoveSignature);
 
     m_pMainLayout = new QHBoxLayout(this);
     m_pMainLayout->addLayout(m_pProductsTab);
@@ -806,16 +979,23 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     //connect
     connect(m_pBtnCheckAll, &QPushButton::clicked, this, &webpageDownloaderGUI::slotCheckAll);
     connect(m_pBtnParse, &QPushButton::clicked, this, &webpageDownloaderGUI::slotParseProducts);
+    connect(m_pBtnAddSignature, &QPushButton::clicked, this, &webpageDownloaderGUI::showAddSignDialogSlot);
 }
 
 void webpageDownloaderGUI::readDataFromXMLToGUI()
 {
     //qDebug() << "void webpageDownloaderGUI::readDataFromXMLToGUI()";
     m_pLwProductsNames->clear();
+    m_pLwSignatures->clear();
 
     for (const QString &str : m_operations.getProductsNames())
     {
         m_pLwProductsNames->addItem(str);
+    }
+
+    for (const QString &str : m_operations.getSignaturesNames())
+    {
+        m_pLwSignatures->addItem(str);
     }
 }
 
@@ -832,6 +1012,7 @@ void webpageDownloaderGUI::slotParseProducts()
     {
         m_sLProductName.append(item->text());
     }
+
     if (m_sLProductName.size() > 0)
     {
         for (int i(0); i < m_sLProductName.size(); ++i)
@@ -841,3 +1022,38 @@ void webpageDownloaderGUI::slotParseProducts()
     }
 }
 
+void webpageDownloaderGUI::addSignatureSlot()
+{
+    qDebug() << "1";
+}
+
+void webpageDownloaderGUI::showAddSignDialogSlot()
+{
+    m_pAddSignature = new QDialog(this);
+    m_pAddSignature->resize(300, 100);
+    m_pAddSignature->setAttribute(Qt::WA_DeleteOnClose);
+    m_pAddSignature->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
+    m_pAddSignature->setWindowTitle("Add signature window");
+
+    QPushButton *addBtn = new QPushButton(tr("Add"));
+    QPushButton *cancelBtn = new QPushButton(tr("Cancel"));
+
+    QLineEdit *name = new QLineEdit(tr("Site name..."));
+    QLineEdit *sign = new QLineEdit(tr("Signature..."));
+
+    QHBoxLayout *hBox = new QHBoxLayout();
+    hBox->addWidget(addBtn);
+    hBox->addWidget(cancelBtn);
+
+    QVBoxLayout *layout = new QVBoxLayout();
+    layout->addWidget(name);
+    layout->addWidget(sign);
+    layout->addLayout(hBox);
+
+    connect(cancelBtn, &QPushButton::clicked, m_pAddSignature, &QDialog::close);
+    connect(addBtn, &QPushButton::clicked, this, &webpageDownloaderGUI::addSignatureSlot);
+
+    m_pAddSignature->setLayout(layout);
+    m_pAddSignature->setModal(true);
+    m_pAddSignature->show();
+}
