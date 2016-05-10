@@ -31,6 +31,7 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QWebView>
+#include <QXmlStreamReader>
 
 #include "singleton.h"
 
@@ -543,6 +544,73 @@ const QStringList baseOperations::getSignaturesNames()
     return _signaturesNames;
 }
 
+bool baseOperations::signExists(const QString &_signName)
+{
+    QDomDocument doc;
+    QFile file(m_strSignName);
+    if (!file.open(QIODevice::ReadOnly) || !doc.setContent(&file))
+    {
+        qDebug() << "productExists() = File not open or not have xml structure.";
+        createXMLStructureInSignaturesDoc();
+    }
+    QDomElement docElem = doc.documentElement();
+    QDomNode n = docElem.firstChild();
+
+    while(!n.isNull())
+    {
+        QDomElement e = n.toElement(); // try to convert the node to an element.
+        if(!e.isNull())
+        {
+            if (e.tagName() == "signature")
+            {
+                if (e.attribute("name") == _signName)
+                {
+                    QMessageBox::warning(NULL, "Sign name exists!", "Sign name exists, please choose another name of sign");
+                    return true;
+                }
+            }
+        }
+        n = n.nextSibling();
+    }
+    return false;
+}
+
+bool baseOperations::removeSignsFromXML(const QStringList &_signsNames)
+{
+    QFile outFile;
+    QDomDocument doc;
+    outFile.setFileName(m_strSignName);
+    if (!outFile.open(QIODevice::ReadOnly) || !doc.setContent(&outFile))
+    {
+        qDebug() << "Function can't open file, or file don't have XML structure.";
+        return false;
+    }
+    for (int i(0); i < _signsNames.size(); ++i)
+    {
+        //delete old element
+        QDomElement docElem = doc.documentElement();
+        QDomNode n = docElem.firstChild(); //product
+        while(!n.isNull())
+        {
+            QDomElement e = n.toElement(); // try to convert the node to an element.
+            if(!e.isNull())
+            {
+                if (e.tagName() == "signature" && e.attribute("name") == _signsNames.at(i))
+                {
+                    docElem.removeChild(n);
+                }
+            }
+            n = n.nextSibling();
+        }
+    }
+    outFile.close();
+    outFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QTextStream(&outFile) << doc.toString();
+    outFile.close();
+    readAllDataFromXML();
+    return true;
+}
+
 void baseOperations::updateProduct(const QString &_productName, const QString &_productLinks)
 {
     QFile outputFile;
@@ -879,44 +947,20 @@ void webpageDownloader::download(const QStringList &links)
         eventLoop.exec();
 
         //read data from reply
-        QByteArray bytes;
+        QString bytes;
         if(reply->error() == QNetworkReply::NoError)
         {
             bytes = reply->readAll();
         }
-
-        //write to file
-        QFile replyFile("siteDataTmp.html");
-        replyFile.open(QIODevice::WriteOnly);
-        replyFile.write(bytes);
-        replyFile.close();
-
-        //read from file
-        QByteArray dataFromFileBa;
-        replyFile.open(QIODevice::ReadOnly);
-        dataFromFileBa = replyFile.readAll();
-        replyFile.close();
-
-        bytes.clear();
-        analizeHTML(dataFromFileBa);
-
-
-
-        //        QWebPage webPage;
-        //        webPage.mainFrame()->setContent(bytes);
-        //        QString content = webPage.mainFrame()->toHtml();
-        //        QWebElement price = webPage.mainFrame()->findFirstElement("*");
-        //        foreach (QWebElement paraElement, elements) {
-        //            qDebug() << "Element: " << paraElement.toPlainText();
-        //        }
-        //        qDebug() << "Element data: "<< element.tagName() << " Reply size: "<< bytes.size();
+        analizeHTML(bytes);
     }
 }
 
-void webpageDownloader::analizeHTML(const QByteArray &ba)
+void webpageDownloader::analizeHTML(const QString &str)
 {
-    if (ba.contains("price_label") && ba.contains("rozetka.com.ua"))
-        qDebug() << "MATCH";
+    QString fua("product");
+    if (str.contains(fua))
+        qDebug() << "Match";
 }
 
 webpageDownloader::~webpageDownloader()
@@ -943,7 +987,7 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pLwSignatures->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     //labels
-    m_pLblProducts = new QLabel(tr("Products"));
+    m_pLblProducts = new QLabel(tr("Products:"));
     m_pTmp = new QLabel(tr("TMP"));
     m_pLblSignatures = new QLabel(tr("Signatures:"));
 
@@ -951,8 +995,7 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pBtnCheckAll = new QPushButton(tr("Check All"));
     m_pBtnParse = new QPushButton(tr("Parse"));
     m_pBtnStopParse = new QPushButton(tr("Stop"));
-    m_pBtnAddSignature = new QPushButton(tr("Add Signature"));
-    m_pBtnRemoveSignature = new QPushButton(tr("Remove Signature"));
+    m_pBtnAddSignature = new QPushButton(tr("Add/Remove Signature"));
 
     //layouts
     m_pActionsTab = new QVBoxLayout();
@@ -967,7 +1010,6 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pProductsTab->addWidget(m_pLblSignatures);
     m_pProductsTab->addWidget(m_pLwSignatures);
     m_pProductsTab->addWidget(m_pBtnAddSignature);
-    m_pProductsTab->addWidget(m_pBtnRemoveSignature);
 
     m_pMainLayout = new QHBoxLayout(this);
     m_pMainLayout->addLayout(m_pProductsTab);
@@ -976,17 +1018,57 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pMainLayout->addWidget(m_pPb);
     setLayout(m_pMainLayout);
 
+    //add signature window
+    m_pAddSignature = new QDialog(this);
+    m_pAddSignature->resize(300, 100);
+    //m_pAddSignature->setAttribute(Qt::WA_DeleteOnClose);
+    m_pAddSignature->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
+    m_pAddSignature->setWindowTitle("Add signature window");
+
+    m_pAddSignBtn = new QPushButton(tr("Add"));
+    m_pRemoveSignBtn = new QPushButton(tr("Remove"));
+    m_pCloseSignFormBtn = new QPushButton(tr("Cancel"));
+
+    m_pSiteNameLe = new QLineEdit(tr("Site name..."));
+    m_pSignNameLe = new QLineEdit(tr("Signature..."));
+
+    m_pSignListLbl = new QLabel(tr("Signatures list:"));
+
+    m_pSignListLw = new QListWidget();
+    m_pSignListLw->setSelectionMode(QAbstractItemView::ExtendedSelection);
+
+    m_pButtonsLayout = new QHBoxLayout();
+    m_pButtonsLayout->addWidget(m_pAddSignBtn);
+    m_pButtonsLayout->addWidget(m_pRemoveSignBtn);
+    m_pButtonsLayout->addWidget(m_pCloseSignFormBtn);
+
+    m_pLineELayout = new QVBoxLayout();
+    m_pLineELayout->addWidget(m_pSignListLbl);
+    m_pLineELayout->addWidget(m_pSignListLw);
+    m_pLineELayout->addWidget(m_pSiteNameLe);
+    m_pLineELayout->addWidget(m_pSignNameLe);
+
+    m_pSignMainLayout = new QVBoxLayout();
+    m_pSignMainLayout->addLayout(m_pLineELayout);
+    m_pSignMainLayout->addLayout(m_pButtonsLayout);
+
+    connect(m_pCloseSignFormBtn, &QPushButton::clicked, m_pAddSignature, &QDialog::close);
+    connect(m_pAddSignBtn, &QPushButton::clicked, this, &webpageDownloaderGUI::addSignSlot);
+    connect(m_pRemoveSignBtn, &QPushButton::clicked, this, &webpageDownloaderGUI::removeSignSlot);
+    m_pAddSignature->setLayout(m_pSignMainLayout);
+    //add signature window end
+
     //connect
     connect(m_pBtnCheckAll, &QPushButton::clicked, this, &webpageDownloaderGUI::slotCheckAll);
     connect(m_pBtnParse, &QPushButton::clicked, this, &webpageDownloaderGUI::slotParseProducts);
-    connect(m_pBtnAddSignature, &QPushButton::clicked, this, &webpageDownloaderGUI::showAddSignDialogSlot);
+    connect(m_pBtnAddSignature, &QPushButton::clicked, this, &webpageDownloaderGUI::showAddSignForm);
 }
 
 void webpageDownloaderGUI::readDataFromXMLToGUI()
 {
-    //qDebug() << "void webpageDownloaderGUI::readDataFromXMLToGUI()";
     m_pLwProductsNames->clear();
     m_pLwSignatures->clear();
+    m_pSignListLw->clear();
 
     for (const QString &str : m_operations.getProductsNames())
     {
@@ -996,6 +1078,7 @@ void webpageDownloaderGUI::readDataFromXMLToGUI()
     for (const QString &str : m_operations.getSignaturesNames())
     {
         m_pLwSignatures->addItem(str);
+        m_pSignListLw->addItem(str);
     }
 }
 
@@ -1008,6 +1091,7 @@ void webpageDownloaderGUI::slotParseProducts()
 {
     m_sLProductName.clear();
     m_pLblProducts->clear();
+
     foreach(QListWidgetItem *item, m_pLwProductsNames->selectedItems())
     {
         m_sLProductName.append(item->text());
@@ -1022,38 +1106,40 @@ void webpageDownloaderGUI::slotParseProducts()
     }
 }
 
-void webpageDownloaderGUI::addSignatureSlot()
+void webpageDownloaderGUI::showAddSignForm()
 {
-    qDebug() << "1";
-}
-
-void webpageDownloaderGUI::showAddSignDialogSlot()
-{
-    m_pAddSignature = new QDialog(this);
-    m_pAddSignature->resize(300, 100);
-    m_pAddSignature->setAttribute(Qt::WA_DeleteOnClose);
-    m_pAddSignature->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
-    m_pAddSignature->setWindowTitle("Add signature window");
-
-    QPushButton *addBtn = new QPushButton(tr("Add"));
-    QPushButton *cancelBtn = new QPushButton(tr("Cancel"));
-
-    QLineEdit *name = new QLineEdit(tr("Site name..."));
-    QLineEdit *sign = new QLineEdit(tr("Signature..."));
-
-    QHBoxLayout *hBox = new QHBoxLayout();
-    hBox->addWidget(addBtn);
-    hBox->addWidget(cancelBtn);
-
-    QVBoxLayout *layout = new QVBoxLayout();
-    layout->addWidget(name);
-    layout->addWidget(sign);
-    layout->addLayout(hBox);
-
-    connect(cancelBtn, &QPushButton::clicked, m_pAddSignature, &QDialog::close);
-    connect(addBtn, &QPushButton::clicked, this, &webpageDownloaderGUI::addSignatureSlot);
-
-    m_pAddSignature->setLayout(layout);
     m_pAddSignature->setModal(true);
     m_pAddSignature->show();
+}
+
+void webpageDownloaderGUI::addSignSlot()
+{
+    if (m_pSiteNameLe->text() == "Site name..." && m_pSignNameLe->text() == "Signature...")
+    {
+        QMessageBox::warning(this, "Warning", "Please chose another sitename or signature");
+        return;
+    }
+    if (!m_operations.signExists(m_pSiteNameLe->text()))
+    {
+        m_operations.writeSignatures(m_pSiteNameLe->text(), m_pSignNameLe->text());
+    }
+    readDataFromXMLToGUI();
+}
+
+void webpageDownloaderGUI::removeSignSlot()
+{
+    m_signsNamesToDelete.clear();
+    foreach(QListWidgetItem* item, m_pSignListLw->selectedItems())
+    {
+        m_signsNamesToDelete.append(item->text());
+    }
+
+    if (m_signsNamesToDelete.size() > 0)
+    {
+        if (m_operations.removeSignsFromXML(m_signsNamesToDelete))
+            QMessageBox::information(this, tr("Sucess"), tr("Opearion sucessful"));
+    }
+    else
+        QMessageBox::information(this, tr("Element not selected!"), tr("Please chose element!"));
+    readDataFromXMLToGUI();
 }

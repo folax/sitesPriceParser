@@ -59,6 +59,10 @@ public:
     explicit baseOperations();
     virtual ~baseOperations();
 
+    //path to file
+    const QString &getSignXMLFileName() { return m_strSignName; }
+    const QString &getProductXMLFileName() { return m_strFileName; }
+
     //work with XML
     void createXMLStructureInDocument();
     bool productExists(const QString&);
@@ -80,6 +84,8 @@ public:
     bool signatureExists(const QString&);
     bool readAllDataFromSignXML();
     const QStringList getSignaturesNames();
+    bool signExists(const QString&);
+    bool removeSignsFromXML(const QStringList&);
 
 private:
     QString m_strFileName;
@@ -201,7 +207,7 @@ public:
 private slots:
 
 private:
-    void analizeHTML(const QByteArray&);
+    void analizeHTML(const QString&);
 
 };
 
@@ -216,8 +222,9 @@ public:
 private slots:
     void slotCheckAll();
     void slotParseProducts();
-    void addSignatureSlot();
-    void showAddSignDialogSlot();
+    void showAddSignForm();
+    void addSignSlot();
+    void removeSignSlot();
 
 private:
     QListWidget *m_pLwProductsNames;
@@ -231,7 +238,6 @@ private:
     QPushButton *m_pBtnParse;
     QPushButton *m_pBtnStopParse;
     QPushButton *m_pBtnAddSignature;
-    QPushButton *m_pBtnRemoveSignature;
 
     QVBoxLayout *m_pProductsTab;
     QVBoxLayout *m_pActionsTab;
@@ -243,8 +249,21 @@ private:
     QStringList m_sLProductName;
     webpageDownloader *m_pWpDownloader;
 
+    //add signature GUI
     QDialog *m_pAddSignature;
-    QString temp_String;
+    QLabel *m_pSignListLbl;
+    QPushButton *m_pAddSignBtn;
+    QPushButton *m_pRemoveSignBtn;
+    QPushButton *m_pCloseSignFormBtn;
+
+    QLineEdit *m_pSiteNameLe;
+    QLineEdit *m_pSignNameLe;
+
+    QListWidget *m_pSignListLw;
+    QHBoxLayout *m_pButtonsLayout;
+    QVBoxLayout *m_pLineELayout;
+    QVBoxLayout *m_pSignMainLayout;
+    QStringList m_signsNamesToDelete;
 };
 
 //__________programm template class
