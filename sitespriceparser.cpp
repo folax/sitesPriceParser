@@ -31,7 +31,6 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QWebView>
-#include <QXmlStreamReader>
 
 #include "singleton.h"
 
@@ -958,9 +957,35 @@ void webpageDownloader::download(const QStringList &links)
 
 void webpageDownloader::analizeHTML(const QString &str)
 {
-    QString fua("product");
-    if (str.contains(fua))
-        qDebug() << "Match";
+    qDebug() << "Analize block start --->";
+
+    //f.ua
+    if (str.contains("F.ua"))
+    {
+        const int key_size = 13, text_indent = 156;
+        //get unique key of product
+        QString key;
+        int pos = str.indexOf("{display:block;}") - 1;
+        for(int i(pos); i != pos - key_size; --i)
+        {
+            key.append(str.at(i));
+        }
+        std::reverse(std::begin(key), std::end(key));
+        qDebug() << "Key: " << key;
+
+        //get price of product 156
+        pos = str.indexOf(key) + key_size + text_indent;
+        key.clear();
+
+        while(str.at(pos) != '<')
+        {
+            key.append(str.at(pos));
+            ++pos;
+        }
+        qDebug() << "Price: " << key.replace(" ", "");
+    }
+
+    qDebug() << "Analize block end --->";
 }
 
 webpageDownloader::~webpageDownloader()
