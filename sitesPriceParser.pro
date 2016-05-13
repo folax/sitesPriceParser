@@ -13,11 +13,13 @@ QMAKE_CFLAGS = -Wall -Wextra -Werror
 
 HEADERS += \
     sitespriceparser.h \
-    singleton.h
+    singleton.h \
+    htmlanalizer.h
 
 SOURCES += \
     sitespriceparser.cpp \
-    main.cpp
+    main.cpp \
+    htmlanalizer.cpp
 
 RESOURCES += \
     res.qrc

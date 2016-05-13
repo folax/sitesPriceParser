@@ -1,11 +1,13 @@
 #ifndef SITESPRICEPARSER_H
 #define SITESPRICEPARSER_H
 
+#include "htmlanalizer.h"
 #include <QDialog>
 #include <QObject>
 #include <QSettings>
 #include <QProxyStyle>
 #include <QWebView>
+
 
 class QVBoxLayout;
 class QHBoxLayout;
@@ -78,20 +80,10 @@ public:
     bool addItemToXML(const QString&, const QString&);
     bool removeItemsFromXML(const QStringList&);
 
-    //work with signatures XML
-    void createXMLStructureInSignaturesDoc();
-    bool writeSignatures(const QString&, const QString&);
-    bool signatureExists(const QString&);
-    bool readAllDataFromSignXML();
-    const QStringList getSignaturesNames();
-    bool signExists(const QString&);
-    bool removeSignsFromXML(const QStringList&);
-
 private:
     QString m_strFileName;
     QString m_strSignName;
     QVector< QPair<QString, QStringList> > m_dataFromXML;
-    QVector< QPair<QString, QString> > m_dataFromSignXML;
 };
 
 //__________product add class
@@ -207,7 +199,7 @@ public:
 private slots:
 
 private:
-    void analizeHTML(const QString&);
+    HtmlAnalizer *htmlAnalize;
 
 };
 
@@ -222,22 +214,16 @@ public:
 private slots:
     void slotCheckAll();
     void slotParseProducts();
-    void showAddSignForm();
-    void addSignSlot();
-    void removeSignSlot();
 
 private:
     QListWidget *m_pLwProductsNames;
-    QListWidget *m_pLwSignatures;
 
     QLabel *m_pLblProducts;
     QLabel *m_pTmp;
-    QLabel *m_pLblSignatures;
 
     QPushButton *m_pBtnCheckAll;
     QPushButton *m_pBtnParse;
     QPushButton *m_pBtnStopParse;
-    QPushButton *m_pBtnAddSignature;
 
     QVBoxLayout *m_pProductsTab;
     QVBoxLayout *m_pActionsTab;
@@ -249,21 +235,6 @@ private:
     QStringList m_sLProductName;
     webpageDownloader *m_pWpDownloader;
 
-    //add signature GUI
-    QDialog *m_pAddSignature;
-    QLabel *m_pSignListLbl;
-    QPushButton *m_pAddSignBtn;
-    QPushButton *m_pRemoveSignBtn;
-    QPushButton *m_pCloseSignFormBtn;
-
-    QLineEdit *m_pSiteNameLe;
-    QLineEdit *m_pSignNameLe;
-
-    QListWidget *m_pSignListLw;
-    QHBoxLayout *m_pButtonsLayout;
-    QVBoxLayout *m_pLineELayout;
-    QVBoxLayout *m_pSignMainLayout;
-    QStringList m_signsNamesToDelete;
 };
 
 //__________programm template class
