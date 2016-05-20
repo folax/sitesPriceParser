@@ -2,16 +2,19 @@
 #include <QDebug>
 #include <QString>
 
-HtmlAnalizer::HtmlAnalizer() : itemPrice(0)
+HtmlAnalizer::HtmlAnalizer()
 {
 
 }
 
 double HtmlAnalizer::getItemPrice(const QString &htmlData)
 {
-    //f.ua
+    //if something wrong return -1
     QString key;
     int pos;
+    itemPrice = -1;
+
+    //f.ua
     if (htmlData.contains("F.ua"))
     {
         key.clear();
@@ -58,12 +61,31 @@ double HtmlAnalizer::getItemPrice(const QString &htmlData)
         qDebug() << "Rozetka.ua price = " << itemPrice;
         return itemPrice;
     }
+
+    //moyo.ua
+    if (htmlData.contains("moyo.ua"))
+    {
+        key.clear();
+        pos = 0;
+        const int text_indent = 8;
+        pos = htmlData.indexOf("price") + text_indent;
+        while(htmlData.at(pos) != '\"')
+        {
+            key.append(htmlData.at(pos));
+            ++pos;
+        }
+        itemPrice = key.toDouble();
+        qDebug() << "moyo.ua price = " << itemPrice;
+        return itemPrice;
+    }
     else
-        return 0;
+    {
+        qDebug() << "Unknown site!";
+        return -1;
+    }
 }
 
 HtmlAnalizer::~HtmlAnalizer()
 {
     qDebug() << "HtmlAnalizer destructor";
 }
-

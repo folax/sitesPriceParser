@@ -709,11 +709,13 @@ webpageDownloader::webpageDownloader(QObject *parent) : QObject(parent)
 
 }
 
-void webpageDownloader::download(const QStringList &links)
+void webpageDownloader::download(const QString &name, const QStringList &links)
 {
     htmlAnalize = new HtmlAnalizer;
+    QVector<webData> tmpVec;
     for(int i(0); i < links.size(); ++i)
     {
+        tmpVec.clear();
         QEventLoop eventLoop;
         QNetworkAccessManager *nam = new QNetworkAccessManager(this);
 
@@ -731,14 +733,36 @@ void webpageDownloader::download(const QStringList &links)
         {
             bytes = reply->readAll();
         }
-        htmlAnalize->getItemPrice(bytes);
+        webData wD;
+        wD.name = name;
+        wD.link = links.at(i);
+        wD.price = htmlAnalize->getItemPrice(bytes);
+        tmpVec.push_back(wD);
     }
+    m_data.append(tmpVec);
     delete htmlAnalize;
 }
+
+const QVector<QVector<webData> > webpageDownloader::getData()
+{
+    qDebug() << "m_data size: " << m_data.size();
+    return this->m_data;
+}
+
 
 webpageDownloader::~webpageDownloader()
 {
 
+}
+
+void webpageDownloader::clearBuffer()
+{
+    if (m_data.size() > 0)
+    {
+        m_data.clear();
+    }
+    else
+        QMessageBox::warning(0, tr("Buffer is empty"), tr("Buffer already empty!"));
 }
 
 //__________ webpage DownloaderGUI;
@@ -747,31 +771,33 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
 {
     this->setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint & Qt::WindowMinimized);
     setWindowTitle("Webpage downloader");
+    //showMaximized();
 
     m_pWpDownloader = new webpageDownloader(this);
 
     //progress bar
-    m_pPb = new QProgressBar;
 
     //list widget
     m_pLwProductsNames = new QListWidget();
     m_pLwProductsNames->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    m_pLwResultList = new QListWidget();
 
 
     //labels
     m_pLblProducts = new QLabel(tr("Products:"));
-    m_pTmp = new QLabel(tr("TMP"));
 
     //buttons
     m_pBtnCheckAll = new QPushButton(tr("Check All"));
     m_pBtnParse = new QPushButton(tr("Parse"));
     m_pBtnStopParse = new QPushButton(tr("Stop"));
+    m_pBtnClearBuffer = new QPushButton(tr("Clear Buffer"));
 
     //layouts
     m_pActionsTab = new QVBoxLayout();
     m_pActionsTab->setAlignment(Qt::AlignTop);
     m_pActionsTab->addWidget(m_pBtnParse);
     m_pActionsTab->addWidget(m_pBtnStopParse);
+    m_pActionsTab->addWidget(m_pBtnClearBuffer);
 
     m_pProductsTab = new QVBoxLayout();
     m_pProductsTab->addWidget(m_pLblProducts);
@@ -781,13 +807,13 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pMainLayout = new QHBoxLayout(this);
     m_pMainLayout->addLayout(m_pProductsTab);
     m_pMainLayout->addLayout(m_pActionsTab);
-    m_pMainLayout->addWidget(m_pTmp);
-    m_pMainLayout->addWidget(m_pPb);
+    m_pMainLayout->addWidget(m_pLwResultList);
     setLayout(m_pMainLayout);
 
     //connect
     connect(m_pBtnCheckAll, &QPushButton::clicked, this, &webpageDownloaderGUI::slotCheckAll);
     connect(m_pBtnParse, &QPushButton::clicked, this, &webpageDownloaderGUI::slotParseProducts);
+    connect(m_pBtnClearBuffer, &QPushButton::clicked, m_pWpDownloader, &webpageDownloader::clearBuffer);
 }
 
 void webpageDownloaderGUI::readDataFromXMLToGUI()
@@ -809,6 +835,7 @@ void webpageDownloaderGUI::slotParseProducts()
     m_pBtnParse->setEnabled(false);
     m_sLProductName.clear();
     m_pLblProducts->clear();
+    m_pLwResultList->clear();
 
     foreach(QListWidgetItem *item, m_pLwProductsNames->selectedItems())
     {
@@ -819,9 +846,20 @@ void webpageDownloaderGUI::slotParseProducts()
     {
         for (int i(0); i < m_sLProductName.size(); ++i)
         {
-            m_pWpDownloader->download(m_operations.getProductLinks(m_sLProductName.at(i)));
+            m_pWpDownloader->download(m_sLProductName.at(i), m_operations.getProductLinks(m_sLProductName.at(i)));
         }
     }
+    QVector<QVector <webData> > dataToView = m_pWpDownloader->getData();
+
+    //name of the aim
+    for(int i(0); i < dataToView.size(); ++i)
+    {
+        for (int j(0); j < dataToView.at(j).size(); ++j)
+        {
+            m_pLwResultList->addItem(dataToView.at(i).at(j).name);
+        }
+    }
+
     m_pBtnParse->setEnabled(true);
 }
 

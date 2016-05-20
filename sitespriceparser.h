@@ -187,20 +187,29 @@ private:
 
 //__________web pages downloader class
 
+struct webData
+{
+    QString name;
+    QString link;
+    double price;
+};
+
 class webpageDownloader : public QObject
 {
     Q_OBJECT
 
 public:
     explicit webpageDownloader(QObject *parent = 0);
+    void download(const QString&, const QStringList&);
+    const QVector< QVector <webData> > getData();
     ~webpageDownloader();
-    void download(const QStringList&);
 
-private slots:
+public slots:
+    void clearBuffer();
 
 private:
     HtmlAnalizer *htmlAnalize;
-
+    QVector< QVector <webData> > m_data;
 };
 
 class webpageDownloaderGUI : public QDialog
@@ -217,19 +226,18 @@ private slots:
 
 private:
     QListWidget *m_pLwProductsNames;
+    QListWidget *m_pLwResultList;
 
     QLabel *m_pLblProducts;
-    QLabel *m_pTmp;
 
     QPushButton *m_pBtnCheckAll;
     QPushButton *m_pBtnParse;
     QPushButton *m_pBtnStopParse;
+    QPushButton *m_pBtnClearBuffer;
 
     QVBoxLayout *m_pProductsTab;
     QVBoxLayout *m_pActionsTab;
     QHBoxLayout *m_pMainLayout;
-
-    QProgressBar *m_pPb;
 
     baseOperations m_operations;
     QStringList m_sLProductName;
