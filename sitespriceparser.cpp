@@ -11,6 +11,7 @@
 #include <QApplication>
 #include <QDomDocument>
 #include <algorithm>
+#include <numeric>
 #include <QSplitter>
 #include <QComboBox>
 #include <QStyleFactory>
@@ -709,13 +710,13 @@ webpageDownloader::webpageDownloader(QObject *parent) : QObject(parent)
 
 }
 
-void webpageDownloader::download(const QString &name, const QStringList &links)
+void webpageDownloader::download(const QStringList &links)
 {
     htmlAnalize = new HtmlAnalizer;
-    QVector<webData> tmpVec;
+    QVector<double> product_prices;
+    QStringList product_links;
     for(int i(0); i < links.size(); ++i)
     {
-        tmpVec.clear();
         QEventLoop eventLoop;
         QNetworkAccessManager *nam = new QNetworkAccessManager(this);
 
@@ -733,22 +734,17 @@ void webpageDownloader::download(const QString &name, const QStringList &links)
         {
             bytes = reply->readAll();
         }
-        webData wD;
-        wD.name = name;
-        wD.link = links.at(i);
-        wD.price = htmlAnalize->getItemPrice(bytes);
-        tmpVec.push_back(wD);
+        product_links.push_back(links.at(i));
+        product_prices.push_back(htmlAnalize->getItemPrice(bytes));
     }
-    m_data.append(tmpVec);
+    m_data.push_back( qMakePair(product_links, product_prices) );
     delete htmlAnalize;
 }
 
-const QVector<QVector<webData> > webpageDownloader::getData()
+const QVector<QPair<QStringList, QVector<double> > > webpageDownloader::getData()
 {
-    qDebug() << "m_data size: " << m_data.size();
-    return this->m_data;
+    return m_data;
 }
-
 
 webpageDownloader::~webpageDownloader()
 {
@@ -791,6 +787,7 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pBtnParse = new QPushButton(tr("Parse"));
     m_pBtnStopParse = new QPushButton(tr("Stop"));
     m_pBtnClearBuffer = new QPushButton(tr("Clear Buffer"));
+    m_pBtnSaveToXls = new QPushButton(tr("Save data to EXCEL"));
 
     //layouts
     m_pActionsTab = new QVBoxLayout();
@@ -798,6 +795,7 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pActionsTab->addWidget(m_pBtnParse);
     m_pActionsTab->addWidget(m_pBtnStopParse);
     m_pActionsTab->addWidget(m_pBtnClearBuffer);
+    m_pActionsTab->addWidget(m_pBtnSaveToXls);
 
     m_pProductsTab = new QVBoxLayout();
     m_pProductsTab->addWidget(m_pLblProducts);
@@ -846,20 +844,31 @@ void webpageDownloaderGUI::slotParseProducts()
     {
         for (int i(0); i < m_sLProductName.size(); ++i)
         {
-            m_pWpDownloader->download(m_sLProductName.at(i), m_operations.getProductLinks(m_sLProductName.at(i)));
+            m_pWpDownloader->download(m_operations.getProductLinks(m_sLProductName.at(i)));
         }
     }
-    QVector<QVector <webData> > dataToView = m_pWpDownloader->getData();
 
-    //name of the aim
-    for(int i(0); i < dataToView.size(); ++i)
+    //output dat on QListWidget
+    const QVector< QPair< QStringList, QVector<double> > > dataToView = m_pWpDownloader->getData();
+    for (int i(0); i < dataToView.size(); ++i)
     {
-        for (int j(0); j < dataToView.at(j).size(); ++j)
-        {
-            m_pLwResultList->addItem(dataToView.at(i).at(j).name);
-        }
-    }
+        m_pLwResultList->addItem(m_sLProductName.at(i));
 
+        QVector<double> getDataSize = dataToView.at(i).second;
+        for(int j(0); j < getDataSize.size(); ++j)
+        {
+            m_pLwResultList->addItem(dataToView.at(i).first.at(j));
+            m_pLwResultList->addItem(QString::number(dataToView.at(i).second.at(j)));
+        }
+        //calculate min, max, average values
+        double min = *std::min_element(getDataSize.constBegin(), getDataSize.constEnd());
+        double max = *std::max_element(getDataSize.constBegin(), getDataSize.constEnd());
+        double ave = std::accumulate(getDataSize.constBegin(), getDataSize.constEnd(), 0.0) / getDataSize.size();
+        m_pLwResultList->addItem("Min: " + QString::number(min));
+        m_pLwResultList->addItem("Average: " + QString::number(ave));
+        m_pLwResultList->addItem("Max: " + QString::number(max));
+    }
     m_pBtnParse->setEnabled(true);
+    qDebug() << dataToView;
 }
 
