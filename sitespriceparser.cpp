@@ -34,6 +34,7 @@
 #include <QWebView>
 
 #include "singleton.h"
+#include "xlsxdocument.h"
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
 {
@@ -761,6 +762,27 @@ void webpageDownloader::clearBuffer()
         QMessageBox::warning(0, tr("Buffer is empty"), tr("Buffer already empty!"));
 }
 
+void webpageDownloader::saveDataToExcel()
+{
+    if (m_data.isEmpty())
+    {
+        QMessageBox::warning(0, tr("Data empty"), tr("Please parse data first!"));
+        return;
+    }
+    else
+    {
+        QXlsx::Document xlsx;
+        for (int i(0); i < m_data.size(); ++i)
+        {
+            xlsx.write(QString("A%1").arg(i), "Hello Qt!");
+            xlsx.write(QString("B%1").arg(i), 12345);
+            xlsx.write(QString("C%1").arg(i), "=44+33");
+            qDebug() << QString("C%1").arg(i);
+        }
+        xlsx.save();
+    }
+}
+
 //__________ webpage DownloaderGUI;
 
 webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
@@ -812,6 +834,7 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     connect(m_pBtnCheckAll, &QPushButton::clicked, this, &webpageDownloaderGUI::slotCheckAll);
     connect(m_pBtnParse, &QPushButton::clicked, this, &webpageDownloaderGUI::slotParseProducts);
     connect(m_pBtnClearBuffer, &QPushButton::clicked, m_pWpDownloader, &webpageDownloader::clearBuffer);
+    connect(m_pBtnSaveToXls, &QPushButton::clicked, m_pWpDownloader, &webpageDownloader::saveDataToExcel);
 }
 
 void webpageDownloaderGUI::readDataFromXMLToGUI()

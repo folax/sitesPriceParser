@@ -27,4 +27,6 @@ RESOURCES += \
 RC_ICONS = /images/app.ico
 RC_FILE = app.rc
 
+include(libs/xlsx/qtxlsx.pri)
+
 

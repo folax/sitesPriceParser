@@ -199,6 +199,7 @@ public:
 
 public slots:
     void clearBuffer();
+    void saveDataToExcel();
 
 private:
     HtmlAnalizer *htmlAnalize;
