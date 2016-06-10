@@ -30,7 +30,7 @@
 #include <QtNetwork/QNetworkRequest>
 #include <QUrl>
 #include <QEventLoop>
-#include <QFile>
+#include <QFileDialog>
 #include <QWebView>
 
 #include "singleton.h"
@@ -771,13 +771,26 @@ void webpageDownloader::saveDataToExcel()
     }
     else
     {
+        QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"), "/home/jana/untitled.png", tr("Images (*.png *.xpm *.jpg)"));
         QXlsx::Document xlsx;
-        for (int i(0); i < m_data.size(); ++i)
+        int j = 1, i = 1;
+        for (QPair <QStringList, QVector<double>> pair : m_data)
         {
-            xlsx.write(QString("A%1").arg(i), "Hello Qt!");
-            xlsx.write(QString("B%1").arg(i), 12345);
-            xlsx.write(QString("C%1").arg(i), "=44+33");
-            qDebug() << QString("C%1").arg(i);
+
+            for (QString str : pair.first)
+            {
+                QString row = "B";
+                row += QString::number(i);
+                xlsx.write(row, str);
+                ++i;
+            }
+            for (double vec : pair.second)
+            {
+                QString row = "C";
+                row += QString::number(j);
+                xlsx.write(row, vec);
+                ++j;
+            }
         }
         xlsx.save();
     }
@@ -854,10 +867,11 @@ void webpageDownloaderGUI::slotCheckAll()
 void webpageDownloaderGUI::slotParseProducts()
 {
     m_pBtnParse->setEnabled(false);
-    m_sLProductName.clear();
     m_pLblProducts->clear();
     m_pLwResultList->clear();
+    m_sLProductName.clear();
 
+    //load data from QListWidget
     foreach(QListWidgetItem *item, m_pLwProductsNames->selectedItems())
     {
         m_sLProductName.append(item->text());
@@ -871,11 +885,11 @@ void webpageDownloaderGUI::slotParseProducts()
         }
     }
 
-    //output dat on QListWidget
+    //output data on QListWidget
     const QVector< QPair< QStringList, QVector<double> > > dataToView = m_pWpDownloader->getData();
     for (int i(0); i < dataToView.size(); ++i)
     {
-        m_pLwResultList->addItem(m_sLProductName.at(i));
+        m_pLwResultList->addItem("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
 
         QVector<double> getDataSize = dataToView.at(i).second;
         for(int j(0); j < getDataSize.size(); ++j)
@@ -887,11 +901,10 @@ void webpageDownloaderGUI::slotParseProducts()
         double min = *std::min_element(getDataSize.constBegin(), getDataSize.constEnd());
         double max = *std::max_element(getDataSize.constBegin(), getDataSize.constEnd());
         double ave = std::accumulate(getDataSize.constBegin(), getDataSize.constEnd(), 0.0) / getDataSize.size();
-        m_pLwResultList->addItem("Min: " + QString::number(min));
+        m_pLwResultList->addItem("-----------------\nMin: " + QString::number(min));
         m_pLwResultList->addItem("Average: " + QString::number(ave));
-        m_pLwResultList->addItem("Max: " + QString::number(max));
+        m_pLwResultList->addItem("Max: " + QString::number(max) + "\n-----------------");
     }
     m_pBtnParse->setEnabled(true);
-    qDebug() << dataToView;
 }
 
