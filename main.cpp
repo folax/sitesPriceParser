@@ -1,6 +1,7 @@
 #include "sitespriceparser.h"
 #include <QApplication>
 #include <QScopedPointer>
+#include <QTextCodec>
 
 int main(int argc, char** argv)
 {

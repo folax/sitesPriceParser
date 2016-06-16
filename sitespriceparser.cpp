@@ -1,4 +1,7 @@
 #include "sitespriceparser.h"
+#include "singleton.h"
+#include "xlsxdocument.h"
+
 #include <QDebug>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -20,7 +23,6 @@
 #include <QProgressBar>
 #include <QList>
 #include <QPair>
-
 #include <QWebElement>
 #include <QWebFrame>
 #include <QWebPage>
@@ -32,9 +34,8 @@
 #include <QEventLoop>
 #include <QFileDialog>
 #include <QWebView>
-
-#include "singleton.h"
-#include "xlsxdocument.h"
+#include <QTextCodec>
+#include <QTimer>
 
 sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
 {
@@ -50,6 +51,7 @@ sitesPriceParserGUI::sitesPriceParserGUI(QWidget *parent) : QDialog(parent)
 
     //lineedits
     m_pTeProductList = new QTextEdit();
+    m_pTeProductList->setText(tr("Who are YOU ?"));
 
     //layouts
     m_pProductLayout = new QVBoxLayout();
@@ -292,12 +294,12 @@ newStyle::newStyle() : QProxyStyle(QStyleFactory::create("Fusion"))
 void newStyle::polish(QPalette &darkPalette)
 {
     darkPalette.setColor(QPalette::Window, QColor(53,53,53));
-    darkPalette.setColor(QPalette::WindowText, Qt::white);
-    darkPalette.setColor(QPalette::Base, QColor(25,25,25)); //listWidget color
+    darkPalette.setColor(QPalette::WindowText, Qt::cyan);
+    darkPalette.setColor(QPalette::Base, QColor(114, 114, 113)); //listWidget color
     darkPalette.setColor(QPalette::AlternateBase, QColor(53,53,53));
     darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
     darkPalette.setColor(QPalette::ToolTipText, Qt::white);
-    darkPalette.setColor(QPalette::Text, QColor(216, 224, 240));
+    darkPalette.setColor(QPalette::Text, QColor(255, 237, 0)); //text color
     darkPalette.setColor(QPalette::Button, QColor(4, 90, 135));
     darkPalette.setColor(QPalette::ButtonText, Qt::white);
     darkPalette.setColor(QPalette::BrightText, Qt::red);
@@ -487,7 +489,11 @@ void baseOperations::updateProduct(const QString &_productName, const QString &_
 
     outputFile.close();
     outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-    QTextStream(&outputFile) << doc.toString();
+
+    QTextStream ts(&outputFile);
+    ts.setCodec("utf-8");
+    ts << doc.toString();
+
     outputFile.close();
     readAllDataFromXML();
 }
@@ -655,7 +661,10 @@ bool baseOperations::addItemToXML(const QString &_productName, const QString &_p
 
         outputFile.close();
         outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-        QTextStream(&outputFile) << doc.toString();
+        qDebug() << doc.toString();
+        QTextStream ts(&outputFile);
+        ts.setCodec("utf-8");
+        ts << doc.toString();
     }
     else
         return false;
@@ -693,7 +702,9 @@ bool baseOperations::removeItemsFromXML(const QStringList &_productNames)
     }
     outputFile.close();
     outputFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
-    QTextStream(&outputFile) << doc.toString();
+    QTextStream ts(&outputFile);
+    ts.setCodec("utf-8");
+    ts << doc.toString();
     outputFile.close();
     readAllDataFromXML();
     return true;
@@ -711,40 +722,55 @@ webpageDownloader::webpageDownloader(QObject *parent) : QObject(parent)
 
 }
 
-void webpageDownloader::download(const QStringList &links)
+void webpageDownloader::download(const QString &productName, const QStringList &links)
 {
-    htmlAnalize = new HtmlAnalizer;
-    QVector<double> product_prices;
-    QStringList product_links;
-    for(int i(0); i < links.size(); ++i)
+    m_dowloadActivity = true;
+    while(m_dowloadActivity)
     {
-        QEventLoop eventLoop;
-        QNetworkAccessManager *nam = new QNetworkAccessManager(this);
-
-        connect(nam, &QNetworkAccessManager::finished, &eventLoop, &QEventLoop::quit);
-
-        QNetworkRequest request;
-        request.setUrl(QUrl(links.at(i)));
-
-        QNetworkReply *reply = nam->get(request);
-        eventLoop.exec();
-
-        //read data from reply
-        QString bytes;
-        if(reply->error() == QNetworkReply::NoError)
+        htmlAnalize = new HtmlAnalizer;
+        webData wd;
+        for(int i(0); i < links.size(); ++i)
         {
-            bytes = reply->readAll();
+            QTimer *timer = new QTimer();
+            timer->setInterval(3000);
+            timer->start();
+            bool sign = false;
+            while ( sign != true && timer->remainingTime() != 0 )
+            {
+                QEventLoop eventLoop;
+                QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+
+                connect(nam, &QNetworkAccessManager::finished, &eventLoop, &QEventLoop::quit);
+
+                QNetworkRequest request;
+                request.setUrl(QUrl(links.at(i)));
+
+                QNetworkReply *reply = nam->get(request);
+                eventLoop.exec();
+
+                //read data from reply
+                QString bytes;
+                if(reply->error() == QNetworkReply::NoError)
+                {
+                    bytes = reply->readAll();
+                }
+                wd.product_name.push_back(productName);
+                wd.product_links.push_back(links.at(i));
+                wd.product_price.push_back(htmlAnalize->getItemPrice(bytes));
+                sign = true;
+                qDebug() << "Sign: " << sign;
+            }
+            delete timer;
         }
-        product_links.push_back(links.at(i));
-        product_prices.push_back(htmlAnalize->getItemPrice(bytes));
+        m_dowloadActivity = false;
+        m_vecData.push_back(wd);
+        delete htmlAnalize;
     }
-    m_data.push_back( qMakePair(product_links, product_prices) );
-    delete htmlAnalize;
 }
 
-const QVector<QPair<QStringList, QVector<double> > > webpageDownloader::getData()
+const QVector<webData> webpageDownloader::getData()
 {
-    return m_data;
+    return m_vecData;
 }
 
 webpageDownloader::~webpageDownloader()
@@ -754,9 +780,9 @@ webpageDownloader::~webpageDownloader()
 
 void webpageDownloader::clearBuffer()
 {
-    if (m_data.size() > 0)
+    if (m_vecData.size() > 0)
     {
-        m_data.clear();
+        m_vecData.clear();
     }
     else
         QMessageBox::warning(0, tr("Buffer is empty"), tr("Buffer already empty!"));
@@ -764,36 +790,43 @@ void webpageDownloader::clearBuffer()
 
 void webpageDownloader::saveDataToExcel()
 {
-    if (m_data.isEmpty())
+    if (m_vecData.isEmpty())
     {
         QMessageBox::warning(0, tr("Data empty"), tr("Please parse data first!"));
         return;
     }
     else
     {
-        QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"), "/home/jana/untitled.png", tr("Images (*.png *.xpm *.jpg)"));
-        QXlsx::Document xlsx;
-        int j = 1, i = 1;
-        for (QPair <QStringList, QVector<double>> pair : m_data)
-        {
+        QString appPath = QApplication::applicationDirPath();
+        QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"), appPath + "/untitled.xlsx", tr("Excel (*.xlsx)"));
 
-            for (QString str : pair.first)
+        QXlsx::Document xlsx;
+
+        int cnt = 1;
+        for (int i(0); i < m_vecData.size(); ++i)
+        {
+            int Size = m_vecData.at(i).product_name.size();
+            for (int j(0); j < Size; ++j)
             {
-                QString row = "B";
-                row += QString::number(i);
-                xlsx.write(row, str);
-                ++i;
-            }
-            for (double vec : pair.second)
-            {
-                QString row = "C";
-                row += QString::number(j);
-                xlsx.write(row, vec);
-                ++j;
+                QString row = "A";
+                row += QString::number(cnt);
+                xlsx.write(row, m_vecData.at(i).product_name.at(j));
+                row.remove(0, 1);
+                row.push_front("B");
+                xlsx.write(row, m_vecData.at(i).product_links.at(j));
+                row.remove(0, 1);
+                row.push_front("C");
+                xlsx.write(row, m_vecData.at(i).product_price.at(j));
+                ++cnt;
             }
         }
-        xlsx.save();
+        xlsx.saveAs(fileName);
     }
+}
+
+void webpageDownloader::cancelDownload()
+{
+    m_dowloadActivity = false;
 }
 
 //__________ webpage DownloaderGUI;
@@ -816,6 +849,7 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
 
     //labels
     m_pLblProducts = new QLabel(tr("Products:"));
+    m_pLblResult= new QLabel(tr("Result:"));
 
     //buttons
     m_pBtnCheckAll = new QPushButton(tr("Check All"));
@@ -823,24 +857,31 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     m_pBtnStopParse = new QPushButton(tr("Stop"));
     m_pBtnClearBuffer = new QPushButton(tr("Clear Buffer"));
     m_pBtnSaveToXls = new QPushButton(tr("Save data to EXCEL"));
+    m_pBtnCancel = new QPushButton(tr("Cancel"));
 
     //layouts
     m_pActionsTab = new QVBoxLayout();
     m_pActionsTab->setAlignment(Qt::AlignTop);
+    m_pActionsTab->setContentsMargins(0,20,0,0);
     m_pActionsTab->addWidget(m_pBtnParse);
     m_pActionsTab->addWidget(m_pBtnStopParse);
     m_pActionsTab->addWidget(m_pBtnClearBuffer);
     m_pActionsTab->addWidget(m_pBtnSaveToXls);
+    m_pActionsTab->addWidget(m_pBtnCancel);
 
     m_pProductsTab = new QVBoxLayout();
     m_pProductsTab->addWidget(m_pLblProducts);
     m_pProductsTab->addWidget(m_pLwProductsNames);
     m_pProductsTab->addWidget(m_pBtnCheckAll);
 
+    m_pResultTab = new QVBoxLayout();
+    m_pResultTab->addWidget(m_pLblResult);
+    m_pResultTab->addWidget(m_pLwResultList);
+
     m_pMainLayout = new QHBoxLayout(this);
     m_pMainLayout->addLayout(m_pProductsTab);
     m_pMainLayout->addLayout(m_pActionsTab);
-    m_pMainLayout->addWidget(m_pLwResultList);
+    m_pMainLayout->addLayout(m_pResultTab);
     setLayout(m_pMainLayout);
 
     //connect
@@ -848,6 +889,8 @@ webpageDownloaderGUI::webpageDownloaderGUI(QWidget *parent) : QDialog(parent)
     connect(m_pBtnParse, &QPushButton::clicked, this, &webpageDownloaderGUI::slotParseProducts);
     connect(m_pBtnClearBuffer, &QPushButton::clicked, m_pWpDownloader, &webpageDownloader::clearBuffer);
     connect(m_pBtnSaveToXls, &QPushButton::clicked, m_pWpDownloader, &webpageDownloader::saveDataToExcel);
+    connect(m_pBtnCancel, &QPushButton::clicked, this, &webpageDownloaderGUI::close);
+    connect(m_pBtnStopParse, &QPushButton::clicked, m_pWpDownloader, &webpageDownloader::cancelDownload);
 }
 
 void webpageDownloaderGUI::readDataFromXMLToGUI()
@@ -867,7 +910,6 @@ void webpageDownloaderGUI::slotCheckAll()
 void webpageDownloaderGUI::slotParseProducts()
 {
     m_pBtnParse->setEnabled(false);
-    m_pLblProducts->clear();
     m_pLwResultList->clear();
     m_sLProductName.clear();
 
@@ -881,26 +923,28 @@ void webpageDownloaderGUI::slotParseProducts()
     {
         for (int i(0); i < m_sLProductName.size(); ++i)
         {
-            m_pWpDownloader->download(m_operations.getProductLinks(m_sLProductName.at(i)));
+            m_pWpDownloader->download(m_sLProductName.at(i), m_operations.getProductLinks(m_sLProductName.at(i)));
         }
     }
 
     //output data on QListWidget
-    const QVector< QPair< QStringList, QVector<double> > > dataToView = m_pWpDownloader->getData();
+    const QVector<webData> dataToView = m_pWpDownloader->getData();
+
     for (int i(0); i < dataToView.size(); ++i)
     {
         m_pLwResultList->addItem("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+        m_pLwResultList->addItem(dataToView.at(i).product_name.at(0));
 
-        QVector<double> getDataSize = dataToView.at(i).second;
-        for(int j(0); j < getDataSize.size(); ++j)
+        int Size = dataToView.at(i).product_name.size();
+        for (int j(0); j < Size; ++j)
         {
-            m_pLwResultList->addItem(dataToView.at(i).first.at(j));
-            m_pLwResultList->addItem(QString::number(dataToView.at(i).second.at(j)));
+            m_pLwResultList->addItem(dataToView.at(i).product_links.at(j));
+            m_pLwResultList->addItem(QString::number(dataToView.at(i).product_price.at(j)));
         }
-        //calculate min, max, average values
-        double min = *std::min_element(getDataSize.constBegin(), getDataSize.constEnd());
-        double max = *std::max_element(getDataSize.constBegin(), getDataSize.constEnd());
-        double ave = std::accumulate(getDataSize.constBegin(), getDataSize.constEnd(), 0.0) / getDataSize.size();
+        QVector<double> getData_price = dataToView.at(i).product_price;
+        double min = *std::min_element(getData_price.constBegin(), getData_price.constEnd());
+        double max = *std::max_element(getData_price.constBegin(), getData_price.constEnd());
+        double ave = std::accumulate(getData_price.constBegin(), getData_price.constEnd(), 0.0) / getData_price.size();
         m_pLwResultList->addItem("-----------------\nMin: " + QString::number(min));
         m_pLwResultList->addItem("Average: " + QString::number(ave));
         m_pLwResultList->addItem("Max: " + QString::number(max) + "\n-----------------");

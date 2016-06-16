@@ -8,7 +8,6 @@
 #include <QProxyStyle>
 #include <QWebView>
 
-
 class QVBoxLayout;
 class QHBoxLayout;
 class QLineEdit;
@@ -20,7 +19,6 @@ class QSplitter;
 class QComboBox;
 class QListWidget;
 class QProgressBar;
-//class QDialog;
 
 class sitesPriceParserGUI : public QDialog
 {
@@ -187,23 +185,31 @@ private:
 
 //__________web pages downloader class
 
+struct webData {
+    QStringList product_name;
+    QStringList product_links;
+    QVector<double> product_price;
+};
+
 class webpageDownloader : public QObject
 {
     Q_OBJECT
 
 public:
     explicit webpageDownloader(QObject *parent = 0);
-    void download(const QStringList&);
-    const QVector<QPair<QStringList, QVector<double>> > getData();
+    void download(const QString&, const QStringList&);
+    const QVector<webData> getData();
     ~webpageDownloader();
 
 public slots:
     void clearBuffer();
     void saveDataToExcel();
+    void cancelDownload();
 
 private:
     HtmlAnalizer *htmlAnalize;
-    QVector< QPair< QStringList, QVector<double> > > m_data;
+    QVector<webData> m_vecData;
+    bool m_dowloadActivity;
 
 };
 
@@ -224,14 +230,17 @@ private:
     QListWidget *m_pLwResultList;
 
     QLabel *m_pLblProducts;
+    QLabel *m_pLblResult;
 
     QPushButton *m_pBtnCheckAll;
     QPushButton *m_pBtnParse;
     QPushButton *m_pBtnStopParse;
     QPushButton *m_pBtnClearBuffer;
     QPushButton *m_pBtnSaveToXls;
+    QPushButton *m_pBtnCancel;
 
     QVBoxLayout *m_pProductsTab;
+    QVBoxLayout *m_pResultTab;
     QVBoxLayout *m_pActionsTab;
     QHBoxLayout *m_pMainLayout;
 
